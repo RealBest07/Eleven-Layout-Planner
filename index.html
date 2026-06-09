@@ -1,0 +1,3401 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7-Eleven Store Layout Planner</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background: #0d0d1a;
+  color: #e0e0e0;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== LEFT PANEL ===== */
+.panel {
+  width: 290px;
+  flex-shrink: 0;
+  background: #13132a;
+  border-right: 1px solid #2a2a4a;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  background: linear-gradient(135deg, #e63946, #c1121f);
+  padding: 14px 16px;
+  flex-shrink: 0;
+}
+.panel-header h1 { font-size: 16px; font-weight: 700; color: white; }
+.panel-header p { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+.panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: #0d0d1a; }
+.panel-body::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.section { margin-bottom: 14px; }
+.section-hd {
+  background: #1e1e3f;
+  border-left: 3px solid #e63946;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  border-radius: 0 3px 3px 0;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-hd::after { content: '▾'; font-size: 10px; color: #555; transition: transform 0.15s; }
+.section.collapsed .section-hd::after { transform: rotate(-90deg); }
+.section-body { overflow: hidden; transition: max-height 0.2s ease; }
+.section.collapsed .section-body { max-height: 0 !important; }
+.section-hd.no-collapse { cursor: default; }
+.section-hd.no-collapse::after { display: none; }
+label { display: block; font-size: 11px; color: #888; margin-bottom: 2px; margin-top: 5px; }
+input[type="number"], select {
+  width: 100%;
+  padding: 6px 8px;
+  background: #0d0d1f;
+  border: 1px solid #2a2a4a;
+  color: #e0e0e0;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: border-color 0.2s;
+}
+input[type="number"]:focus, select:focus {
+  border-color: #e63946;
+  outline: none;
+  background: #111128;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+
+.setback-grid {
+  display: grid;
+  grid-template-columns: 70px 1fr 70px;
+  grid-template-rows: auto auto auto;
+  gap: 4px;
+  align-items: center;
+}
+.setback-center {
+  display: flex; align-items: center; justify-content: center;
+  background: #1e1e3f; border: 1px dashed #3a3a5c;
+  border-radius: 4px; height: 36px;
+  font-size: 18px;
+}
+.setback-label {
+  font-size: 10px; color: #666; text-align: center; margin-top: 2px;
+}
+
+.btn-gen {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #e63946, #c1121f);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(230,57,70,0.3);
+}
+.btn-gen:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(230,57,70,0.5); }
+.btn-gen:active { transform: translateY(0); }
+
+.error-msg {
+  background: rgba(230,57,70,0.1);
+  border: 1px solid #e63946;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #ff8080;
+  margin-top: 8px;
+  white-space: pre-line;
+  display: none;
+}
+
+/* ===== MAIN AREA ===== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #f5f5f0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#canvas { display: block; width: 100%; height: 100%; }
+
+/* ===== STATS BAR ===== */
+.stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #13132a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+.stat-val { font-size: 22px; font-weight: 700; color: #e63946; line-height: 1; }
+.stat-val.green { color: #2ed573; }
+.stat-val.blue { color: #48cae4; }
+.stat-lbl { font-size: 10px; color: #666; margin-top: 2px; text-align: center; }
+.stat-divider { width: 1px; background: #2a2a4a; }
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-ok { background: rgba(46,213,115,0.15); color: #2ed573; border: 1px solid #2ed573; }
+.badge-err { background: rgba(230,57,70,0.15); color: #e63946; border: 1px solid #e63946; }
+
+/* ===== LEGEND ===== */
+.legend {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  padding: 4px 0;
+}
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #888; }
+.leg-box { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
+
+/* ===== MODE TOGGLE ===== */
+.mode-btn {
+  padding: 8px 4px; background: #1e1e3f; border: 1px solid #2a2a4a;
+  color: #888; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.mode-btn:hover { border-color: #e63946; color: #ccc; }
+.mode-btn.active { background: linear-gradient(135deg,#e63946,#c1121f); color: #fff; border-color: #e63946; }
+
+/* ===== POLYGON PANEL ===== */
+.btn-sm {
+  padding: 6px 8px; background: #1e1e3f; border: 1px solid #2a2a4a;
+  color: #ccc; border-radius: 4px; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; width: 100%;
+}
+.btn-sm:hover { border-color: #48cae4; color: #fff; }
+.btn-sm.live { background: #1a7a6e; border-color: #2ed573; color: #fff; }
+.btn-sm.danger:hover { border-color: #e63946; }
+.bld-card {
+  background: #16162e; border: 1px solid #2a2a4a; border-radius: 6px;
+  padding: 8px; margin-bottom: 6px;
+}
+.bld-card.sel { border-color: #48cae4; box-shadow: 0 0 0 1px #48cae4; }
+.bld-card .bld-hd {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.bld-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+.bld-card .bld-name {
+  flex: 1; font-size: 11px; font-weight: 600; color: #ddd;
+  background: transparent; border: none; padding: 2px;
+}
+.bld-card .bld-name:focus { outline: 1px solid #48cae4; border-radius: 2px; }
+.bld-del {
+  background: transparent; border: none; color: #e63946; cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 2px;
+}
+.bld-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.bld-grid label { font-size: 9px; margin: 2px 0 0; }
+.bld-grid input, .bld-grid select { padding: 4px 6px; font-size: 11px; }
+.poly-hint {
+  background: rgba(72,202,228,0.1); border: 1px solid #48cae4; border-radius: 4px;
+  padding: 6px 8px; font-size: 10px; color: #7fd7e8; margin-top: 6px; line-height: 1.4;
+}
+.plot-row {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: #bbb;
+  background: #16162e; border: 1px solid #2a2a4a; border-radius: 4px;
+  padding: 5px 8px; margin-bottom: 4px;
+}
+.plot-row .pr-name { flex: 1; }
+
+/* ===== TEMPLATE PICKER / DROPDOWN ===== */
+.tpl-picker {
+  display: flex; align-items: center; gap: 8px;
+  background: #0d0d1f; border: 1px solid #2a2a4a; border-radius: 4px;
+  padding: 5px 8px; cursor: pointer; transition: border-color 0.2s;
+}
+.tpl-picker:hover { border-color: #e63946; }
+.tpl-thumb {
+  width: 30px; height: 26px; border-radius: 3px; background: #f5f5f0;
+  object-fit: contain; flex-shrink: 0; border: 1px solid #2a2a4a;
+}
+.tpl-name { flex: 1; font-size: 12px; color: #e0e0e0; }
+.tpl-caret { font-size: 10px; color: #666; }
+.tpl-dropdown {
+  background: #16162e; border: 1px solid #2a2a4a; border-radius: 4px;
+  margin-top: 4px; max-height: 260px; overflow-y: auto;
+}
+.tpl-opt {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+  cursor: pointer; border-bottom: 1px solid #20203c;
+}
+.tpl-opt:hover { background: #1e1e3f; }
+.tpl-opt.sel { background: rgba(230,57,70,0.15); }
+.tpl-opt .tpl-thumb { width: 34px; height: 28px; }
+.tpl-opt-name { flex: 1; font-size: 12px; color: #ddd; }
+.tpl-opt-sub { font-size: 9px; color: #777; }
+.tpl-opt-del {
+  background: transparent; border: none; color: #e63946; cursor: pointer;
+  font-size: 13px; padding: 0 3px;
+}
+.tpl-badge { font-size: 8px; color: #48cae4; border: 1px solid #48cae4; border-radius: 3px; padding: 0 3px; }
+
+/* ===== TEMPLATE EDITOR MODAL ===== */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: #13132a; border: 1px solid #2a2a4a; border-radius: 10px;
+  width: 760px; max-width: 95vw; max-height: 92vh; display: flex; flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.modal-hd {
+  background: linear-gradient(135deg, #1d3557, #457b9d);
+  padding: 12px 16px; border-radius: 10px 10px 0 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-hd h2 { font-size: 15px; color: #fff; font-weight: 700; }
+.modal-x { background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
+.modal-body { padding: 14px; overflow-y: auto; display: flex; gap: 14px; }
+.te-left { flex: 1; min-width: 0; }
+.te-canvas-wrap { background: #f5f5f0; border-radius: 6px; position: relative; }
+#teCanvas { display: block; width: 100%; height: 380px; border-radius: 6px; cursor: crosshair; }
+.te-right { width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+.te-tool {
+  padding: 7px 8px; background: #1e1e3f; border: 1px solid #2a2a4a;
+  color: #ccc; border-radius: 5px; font-size: 12px; cursor: pointer; width: 100%; text-align: left;
+  transition: all 0.15s;
+}
+.te-tool:hover { border-color: #48cae4; color: #fff; }
+.te-tool.live { background: #1a7a6e; border-color: #2ed573; color: #fff; }
+.te-hint { font-size: 10px; color: #7fd7e8; background: rgba(72,202,228,0.08);
+  border: 1px solid #2a4a5c; border-radius: 4px; padding: 6px 8px; line-height: 1.4; }
+.modal-ft { padding: 12px 16px; border-top: 1px solid #2a2a4a; display: flex; justify-content: flex-end; gap: 8px; }
+.te-num { width: 100%; padding: 5px 7px; background: #0d0d1f; border: 1px solid #2a2a4a; color: #e0e0e0; border-radius: 4px; font-size: 12px; }
+
+/* ===== LOGIN SCREEN ===== */
+.login-screen {
+  position: fixed; inset: 0; z-index: 2000;
+  background: linear-gradient(135deg, #13132a, #0d0d1a);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-card {
+  background: #13132a; border: 1px solid #2a2a4a; border-radius: 12px;
+  padding: 30px 28px; width: 340px; max-width: 90vw; text-align: center;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+}
+.login-card .login-logo { font-size: 40px; }
+.login-card h1 { font-size: 18px; color: #fff; margin: 8px 0 2px; }
+.login-card p { font-size: 12px; color: #888; margin-bottom: 18px; }
+.login-card input {
+  width: 100%; padding: 10px 12px; margin-bottom: 10px;
+  background: #0d0d1f; border: 1px solid #2a2a4a; color: #e0e0e0;
+  border-radius: 6px; font-size: 13px;
+}
+.login-card input:focus { border-color: #e63946; outline: none; }
+.login-card button {
+  width: 100%; padding: 11px; margin-top: 4px;
+  background: linear-gradient(135deg, #e63946, #c1121f); color: #fff;
+  border: none; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.login-card button:hover { box-shadow: 0 4px 14px rgba(230,57,70,0.5); }
+.login-err { color: #ff8080; font-size: 12px; margin-bottom: 8px; min-height: 16px; display: none; }
+.logout-btn {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; border-radius: 4px; font-size: 10px; padding: 3px 8px; cursor: pointer; margin-top: 6px;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🏪</div>
+    <h1>7-Eleven Layout Planner</h1>
+    <p>เข้าสู่ระบบเพื่อใช้งาน</p>
+    <input id="loginUser" placeholder="ชื่อผู้ใช้ (ID)" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    <input id="loginPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="loginErr"></div>
+    <button onclick="doLogin()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <div class="panel-header">
+    <h1>🏪 7-Eleven Layout Planner</h1>
+    <p>วางผังร้านและคำนวณที่จอดรถ</p>
+    <button class="logout-btn" onclick="logout()">🚪 ออกจากระบบ</button>
+  </div>
+  <div class="panel-body">
+
+    <!-- Mode toggle -->
+    <div class="section">
+      <div class="section-hd">🗺️ โหมดที่ดิน</div>
+      <div class="grid2">
+        <button class="mode-btn active" id="modeRectBtn" onclick="setMode('rect')">▭ สี่เหลี่ยม</button>
+        <button class="mode-btn" id="modePolyBtn" onclick="setMode('poly')">⬡ หลายเหลี่ยม</button>
+      </div>
+    </div>
+
+    <div id="rectPanel">
+    <!-- Plot Size -->
+    <div class="section">
+      <div class="section-hd">📐 ขนาดที่ดิน</div>
+      <div class="grid2">
+        <div>
+          <label>กว้าง (m)</label>
+          <input type="number" id="plotW" value="30" min="5" step="0.5">
+        </div>
+        <div>
+          <label>ลึก/ยาว (m)</label>
+          <input type="number" id="plotD" value="40" min="5" step="0.5">
+        </div>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">
+        * กว้าง = ขนานถนน | ลึก = ลึกเข้าไปจากถนน
+      </div>
+    </div>
+
+    <!-- Store Size -->
+    <div class="section">
+      <div class="section-hd">🏪 แบบร้าน 7-11</div>
+      <label>เลือกแบบร้าน (เทมเพลต)</label>
+      <div class="tpl-picker" id="rectTplPicker" onclick="toggleTplDropdown('rect')">
+        <img class="tpl-thumb" id="rectTplThumb" alt="">
+        <span class="tpl-name" id="rectTplName">M 20×15</span>
+        <span class="tpl-caret">▾</span>
+      </div>
+      <div class="tpl-dropdown" id="rectTplDropdown" style="display:none;"></div>
+      <div class="grid2" style="margin-top:6px;">
+        <button class="btn-sm live" onclick="openTplEditor()">✏️ สร้างแบบใหม่</button>
+        <button class="btn-sm" onclick="openTplEditor(selectedTplId)">⚙ แก้แบบนี้</button>
+      </div>
+      <div style="margin-top:6px;">
+        <label>สลับด้าน (Rotate 90°)</label>
+        <select id="rotateStore" onchange="generate()">
+          <option value="0">ปกติ (กว้าง × ลึก)</option>
+          <option value="1">หมุน 90°</option>
+        </select>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">* ร้านหันหน้าสู่ถนนเสมอ (ด้านล่าง)</div>
+    </div>
+
+    <!-- Setbacks -->
+    <div class="section">
+      <div class="section-hd">📏 ระยะแนวร่น (m)</div>
+      <div class="setback-grid">
+        <!-- Top row: back setback -->
+        <div></div>
+        <div>
+          <label style="text-align:center;">หลัง</label>
+          <input type="number" id="sbBack" value="3" min="0" step="0.5">
+        </div>
+        <div></div>
+
+        <!-- Middle row -->
+        <div>
+          <label>ซ้าย</label>
+          <input type="number" id="sbLeft" value="3" min="0" step="0.5">
+        </div>
+        <div class="setback-center">🏪</div>
+        <div>
+          <label>ขวา</label>
+          <input type="number" id="sbRight" value="3" min="0" step="0.5">
+        </div>
+
+        <div></div><div></div><div></div>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">
+        หลัง = ระยะจากขอบหลังถึงร้าน | ซ้าย/ขวา = ระยะข้างร้าน (ที่จอดรถจะอยู่ในส่วนนี้ด้วย)
+      </div>
+    </div>
+
+    <!-- Parking -->
+    <div class="section">
+      <div class="section-hd">🚗 ที่จอดรถ</div>
+      <div class="grid2">
+        <div>
+          <label>ช่องจอด กว้าง (m)</label>
+          <input type="number" id="carW" value="2.5" min="2" step="0.1">
+        </div>
+        <div>
+          <label>ช่องจอด ลึก (m)</label>
+          <input type="number" id="carD" value="5" min="3" step="0.5">
+        </div>
+      </div>
+      <label>ระยะถอย — ติดถนน (m)</label>
+      <input type="number" id="rearClear" value="10" min="0" step="0.5">
+      <div style="font-size:10px; color:#555; margin-top:2px;">* โซนขับเข้า/ถอยออก ด้านล่างติดถนน</div>
+      <label>ระยะหน้าร้าน — ห่างร้าน (m)</label>
+      <input type="number" id="storeClear" value="2" min="0" step="0.5">
+      <div style="font-size:10px; color:#555; margin-top:2px;">* ทางเดิน/ระยะว่างระหว่างช่องจอดกับหน้าร้าน</div>
+      <label>หมอนจอดรถ — กันชนหน้าช่องจอด (m)</label>
+      <input type="number" id="wheelStop" value="1" min="0" step="0.25">
+      <div style="font-size:10px; color:#555; margin-top:2px;">* ระยะกันชน (wheel stop) ระหว่างช่องจอดกับทางเดินหน้าร้าน</div>
+    </div>
+
+    <!-- Generate button -->
+    <button class="btn-gen" onclick="generate()">⚡ Generate Layout</button>
+    <div class="error-msg" id="errMsg"></div>
+    </div><!-- #rectPanel -->
+
+    <!-- ===== POLYGON PANEL ===== -->
+    <div id="polyPanel" style="display:none;">
+
+      <!-- Land plots -->
+      <div class="section">
+        <div class="section-hd">🗺️ ที่ดิน (แปลง)</div>
+        <button class="btn-sm" id="drawBtn" onclick="toggleDrawPlot()">✏️ วาดที่ดิน (คลิกลงจุด)</button>
+        <div class="grid2" style="margin-top:6px;">
+          <button class="btn-sm" onclick="closeDraftPlot()">✓ ปิดรูป</button>
+          <button class="btn-sm danger" onclick="undoVertex()">↶ ลบจุดล่าสุด</button>
+        </div>
+        <div class="grid2" style="margin-top:6px; align-items:end;">
+          <div>
+            <label>Snap grid (m)</label>
+            <input type="number" id="snapGrid" value="0.5" min="0" step="0.5">
+          </div>
+          <div>
+            <label>มุมมอง (m)</label>
+            <input type="number" id="viewMeters" value="50" min="10" step="5" onchange="polyRender()">
+          </div>
+        </div>
+        <button class="btn-sm" style="margin-top:6px;" onclick="poly.manualView=null;polyRender();">⌖ Reset View</button>
+        <div id="plotList" style="margin-top:8px;"></div>
+        <div id="plotEditor"></div>
+        <div class="poly-hint" id="drawHint">
+          กด <b>วาดที่ดิน</b> แล้วคลิกบนแคนวาสเพื่อลงมุมที่ละจุด ตามเส้นรอบรูป → กด <b>ปิดรูป</b> เมื่อครบ ทำซ้ำเพื่อเพิ่มแปลงที่ 2
+        </div>
+      </div>
+
+      <!-- Buildings -->
+      <div class="section">
+        <div class="section-hd">🏢 อาคารบนที่ดิน</div>
+        <label style="font-size:11px;color:#888;">แบบร้าน 7-Eleven (เทมเพลต)</label>
+        <div class="tpl-picker" id="polyTplPicker" onclick="toggleTplDropdown('poly')">
+          <img class="tpl-thumb" id="polyTplThumb" alt="">
+          <span class="tpl-name" id="polyTplName">M 20×15</span>
+          <span class="tpl-caret">▾</span>
+        </div>
+        <div class="tpl-dropdown" id="polyTplDropdown" style="display:none;"></div>
+        <div class="grid2" style="margin:6px 0;">
+          <button class="btn-sm live" onclick="openTplEditor()">✏️ สร้างแบบใหม่</button>
+          <button class="btn-sm" onclick="openTplEditor(selectedTplId)">⚙ แก้แบบนี้</button>
+        </div>
+        <button class="btn-sm live" onclick="addBuilding('store')">+ ร้าน 7-Eleven</button>
+        <div class="grid2" style="margin-top:6px;">
+          <button class="btn-sm" onclick="addBuilding('neighbor')">+ อาคารข้างเคียง</button>
+          <button class="btn-sm" onclick="addShophouse()">+ ตึกแถว <span style="color:#888;font-weight:400;">(</span><input type="number" id="shopN" value="4" min="1" max="20" step="1" onclick="event.stopPropagation()" style="width:32px;padding:0 2px;background:#0d0d1f;border:none;color:#e0e0e0;font-size:11px;text-align:center;"><span style="color:#888;font-weight:400;"> คูหา)</span></button>
+        </div>
+        <div id="bldList" style="margin-top:8px;"></div>
+        <div class="poly-hint">
+          ลากอาคารบนแคนวาสเพื่อย้าย หรือแก้ค่า x,y ในการ์ด · อาคารที่ล้ำขอบที่ดินจะจางลง + เตือน
+        </div>
+      </div>
+
+      <!-- Setbacks (poly mode) -->
+      <div class="section">
+        <div class="section-hd">📏 ระยะแนวร่น (m)</div>
+        <div class="setback-grid">
+          <div></div>
+          <div><label style="text-align:center;">หลัง</label><input type="number" id="p_sbBack" value="3" min="0" step="0.5"></div>
+          <div></div>
+          <div><label>ซ้าย</label><input type="number" id="p_sbLeft" value="3" min="0" step="0.5"></div>
+          <div class="setback-center">🏪</div>
+          <div><label>ขวา</label><input type="number" id="p_sbRight" value="3" min="0" step="0.5"></div>
+          <div></div><div></div><div></div>
+        </div>
+        <div class="grid2" style="margin-top:8px;">
+          <button class="btn-sm live" onclick="drawSetbackZones()">+ วาดระยะร่น</button>
+          <button class="btn-sm danger" onclick="polySnapshot();poly.sbZones=[];polyRender();">− ลบระยะร่น</button>
+        </div>
+      </div>
+
+      <!-- Parking zones (poly mode) — dynamic list -->
+      <div class="section">
+        <div class="section-hd" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🚗 ที่จอดรถ</span>
+          <button class="btn-sm" style="width:auto;padding:2px 10px;font-size:12px;" onclick="addParkZone()">+ เพิ่ม</button>
+        </div>
+        <div id="parkZoneList" style="margin-top:6px;"></div>
+        <button class="btn-gen" style="margin-top:8px;font-size:12px;padding:8px;" onclick="generatePolyParking()">🚗 สร้างที่จอดรถ</button>
+      </div>
+
+      <!-- Sidewalk zones (left/right/back) -->
+      <div class="section">
+        <div class="section-hd" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🚶 ฟุตบาทด้านข้าง/หลัง</span>
+          <button class="btn-sm" style="width:auto;padding:2px 10px;font-size:12px;" onclick="addSidewalkZone()">+ เพิ่ม</button>
+        </div>
+        <div id="sidewalkList" style="margin-top:6px;"></div>
+        <div class="grid2" style="margin-top:8px;">
+          <button class="btn-sm live" onclick="drawSidewalkZones()">+ วาดฟุตบาท</button>
+          <button class="btn-sm danger" onclick="polySnapshot();poly.swZones=[];polyRender();">− ลบฟุตบาท</button>
+        </div>
+        <div style="font-size:10px;color:#555;margin-top:4px;">ฟุตบาทแนบขอบอาคาร ด้านซ้าย/ขวา/หลัง</div>
+      </div>
+
+      <!-- Reset -->
+      <div class="section">
+        <div class="section-hd" style="border-color:#e63946;">🗑 ล้าง / Reset</div>
+        <div class="grid2">
+          <button class="btn-sm danger" onclick="polySnapshot();poly.zones=[];polyRender();">✕ ล้างที่จอดรถ</button>
+          <button class="btn-sm danger" onclick="polySnapshot();poly.sbZones=[];polyRender();">↺ ล้างระยะร่น</button>
+        </div>
+        <div style="margin-top:4px;">
+          <button class="btn-sm danger" onclick="if(confirm('ล้างข้อมูลทั้งหมด?')){polySnapshot();poly.plots=[];poly.buildings=[];poly.zones=[];poly.draft=[];poly.selPlot=null;poly.selected=null;poly.manualView=null;renderPlotList();renderPlotEditor();renderBldList();polyRender();}">⚠ ล้างทั้งหมด</button>
+        </div>
+      </div>
+    </div><!-- #polyPanel -->
+
+    <!-- Save (shared) -->
+    <button class="btn-gen" onclick="saveImage()" style="background:linear-gradient(135deg,#2a9d8f,#1a7a6e); margin-top:6px;">💾 Save Image</button>
+    <button class="btn-gen" onclick="exportPDF()" style="background:linear-gradient(135deg,#1d3557,#457b9d); margin-top:6px;">📄 Export PDF</button>
+
+    <!-- Legend -->
+    <div class="section" style="margin-top:12px;">
+      <div class="legend">
+        <div class="leg-item"><div class="leg-box" style="background:#ffd700; border: 2px solid #ffd700;"></div> ขอบที่ดิน</div>
+        <div class="leg-item"><div class="leg-box" style="background:#e63946;"></div> ร้าน 7-11</div>
+        <div class="leg-item"><div class="leg-box" style="background:#48cae4; opacity:0.6;"></div> ที่จอดรถ</div>
+        <div class="leg-item"><div class="leg-box" style="background:#90e0ef; border:1px solid #48cae4;"></div> ช่องจอด</div>
+        <div class="leg-item"><div class="leg-box" style="background:rgba(255,180,30,0.4); border:1px solid #c87000;"></div> ระยะถอย</div>
+      </div>
+    </div>
+
+  </div><!-- panel-body -->
+</div><!-- panel -->
+
+<!-- MAIN CANVAS AREA -->
+<div class="main">
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val blue" id="sv-plot">—</div>
+      <div class="stat-lbl">พื้นที่รวม (m²)</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val" id="sv-store">—</div>
+      <div class="stat-lbl">พื้นที่ร้าน (m²)</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val blue" id="sv-park">—</div>
+      <div class="stat-lbl">พื้นที่จอดรถ (m²)</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val green" id="sv-cars" style="font-size:28px;">—</div>
+      <div class="stat-lbl">ที่จอดได้ (คัน)</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val" id="sv-ratio">—</div>
+      <div class="stat-lbl">สัดส่วน GFA</div>
+    </div>
+    <div class="stat-divider" style="flex:1;"></div>
+    <div class="stat" style="justify-content:center;">
+      <div id="sv-status" class="status-badge">—</div>
+    </div>
+  </div>
+</div><!-- main -->
+
+<!-- ===== TEMPLATE EDITOR MODAL ===== -->
+<div class="modal-backdrop" id="tplModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="teTitle">✏️ สร้างแบบร้าน (วาดรูปร่าง)</h2>
+      <button class="modal-x" onclick="closeTplEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="te-left">
+        <div class="te-canvas-wrap"><canvas id="teCanvas"></canvas></div>
+        <div class="te-hint" style="margin-top:8px;">
+          คลิกบนพื้นที่เพื่อลงจุดมุมร้าน ตามเส้นรอบรูป → กด <b>ปิดรูป</b> เมื่อครบ · ลากจุดเพื่อย้าย · คลิกจุดแล้วกด <b>ลบจุด</b> · กริดช่วย snap อัตโนมัติ
+        </div>
+      </div>
+      <div class="te-right">
+        <label style="font-size:11px;color:#888;">ชื่อแบบร้าน</label>
+        <input type="text" id="teName" class="te-num" placeholder="เช่น Standalone L">
+        <div class="grid2" style="gap:6px;">
+          <div><label style="font-size:10px;color:#888;">กว้าง W (m)</label>
+            <input type="number" id="teW" class="te-num" value="20" min="1" step="0.5" onchange="teSetDims()"></div>
+          <div><label style="font-size:10px;color:#888;">ลึก D (m)</label>
+            <input type="number" id="teD" class="te-num" value="15" min="1" step="0.5" onchange="teSetDims()"></div>
+        </div>
+        <label style="font-size:10px;color:#888;">Snap grid (m) — 0 = อิสระ (ละเอียดสุด)</label>
+        <input type="number" id="teSnap" class="te-num" value="0.25" min="0" step="0.25" onchange="teRender()">
+        <button class="te-tool" id="teDrawBtn" onclick="teToggleDraw()">✏️ วาดรูป (คลิกลงจุด)</button>
+        <button class="te-tool" onclick="teClosePath()">✓ ปิดรูป</button>
+        <button class="te-tool" onclick="teDeleteSelected()">🗑 ลบจุดที่เลือก</button>
+        <button class="te-tool" onclick="teUndo()">↶ ลบจุดล่าสุด</button>
+        <button class="te-tool" onclick="teRect()">▭ รีเซ็ตเป็นสี่เหลี่ยม</button>
+        <button class="te-tool" onclick="teClear()">✕ ล้างทั้งหมด</button>
+        <label style="font-size:10px;color:#888;margin-top:4px;">รูปแปลนร้าน (PNG/JPG)</label>
+        <input type="file" id="teImgFile" accept="image/*" onchange="teLoadImg(this)" style="font-size:10px;color:#aaa;width:100%;">
+        <button class="te-tool" onclick="teClearImg()">🗑 ลบรูปแปลน</button>
+        <div class="te-hint" id="teInfo"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-sm" style="width:auto;padding:8px 16px;" onclick="closeTplEditor()">ยกเลิก</button>
+      <button class="btn-gen" style="width:auto;padding:8px 20px;margin:0;" onclick="saveTpl()">💾 บันทึกแบบร้าน</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// AUTH (hard-coded client-side gate — NOT real security)
+// ============================================================
+const AUTH_USERS = { 'admin': '7eleven@2024' };   // id : password
+function doLogin() {
+  const u = (document.getElementById('loginUser').value || '').trim();
+  const p = document.getElementById('loginPass').value || '';
+  if (AUTH_USERS[u] && AUTH_USERS[u] === p) {
+    sessionStorage.setItem('sevene_auth', '1');
+    document.getElementById('loginScreen').style.display = 'none';
+  } else {
+    const e = document.getElementById('loginErr');
+    e.textContent = '⚠ ID หรือรหัสผ่านไม่ถูกต้อง'; e.style.display = 'block';
+  }
+}
+function logout() { sessionStorage.removeItem('sevene_auth'); location.reload(); }
+// already logged in this session → skip login screen
+if (sessionStorage.getItem('sevene_auth') === '1') {
+  const _ls = document.getElementById('loginScreen'); if (_ls) _ls.style.display = 'none';
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let lastLayout = null;
+
+// ============================================================
+// STORE TEMPLATES (shapes, localStorage)
+// ============================================================
+function rectPoly(w, d) { return [{x:0,y:0},{x:w,y:0},{x:w,y:d},{x:0,y:d}]; }
+const STD_TEMPLATES = [
+  {id:'std-s', name:'S 13×15', w:13, d:15, std:true, poly:rectPoly(13,15)},
+  {id:'std-m', name:'M 20×15', w:20, d:15, std:true, poly:rectPoly(20,15)},
+  {id:'std-l', name:'L 23×13', w:23, d:13, std:true, poly:rectPoly(23,13)},
+  {id:'std-lshape', name:'L-shape 20×15', w:20, d:15, std:true,
+   poly:[{x:0,y:0},{x:20,y:0},{x:20,y:9},{x:8,y:9},{x:8,y:15},{x:0,y:15}]},
+];
+const TPL_KEY = 'storeTemplates_v1';
+function loadCustomTpls() { try { return JSON.parse(localStorage.getItem(TPL_KEY)) || []; } catch(e) { return []; } }
+function saveCustomTpls(arr) { localStorage.setItem(TPL_KEY, JSON.stringify(arr)); }
+function getAllTemplates() { return [...STD_TEMPLATES, ...loadCustomTpls()]; }
+function getTpl(id) { return getAllTemplates().find(t => t.id === id) || STD_TEMPLATES[1]; }
+let selectedTplId = 'std-m';
+
+// Image cache: dataURL → HTMLImageElement. Returns loaded img or null (calls onload when ready).
+const _imgCache = {};
+function getImg(dataURL, onload) {
+  if (!dataURL) return null;
+  let im = _imgCache[dataURL];
+  if (im) return im.complete && im.naturalWidth ? im : null;
+  im = new Image(); _imgCache[dataURL] = im;
+  im.onload = () => { if (onload) onload(); };
+  im.src = dataURL;
+  return im.complete && im.naturalWidth ? im : null;
+}
+function getStoreImg() { return getTpl(selectedTplId).img || null; }
+
+// Render a template shape to a small thumbnail dataURL (or use uploaded plan image)
+function tplThumbDataURL(tpl, w = 34, h = 28) {
+  if (tpl.img) return tpl.img;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f5f5f0'; x.fillRect(0, 0, w, h);
+  const pad = 3, bw = w - 2*pad, bh = h - 2*pad;
+  const sc = Math.min(bw / tpl.w, bh / tpl.d);
+  const ox = pad + (bw - tpl.w*sc)/2, oy = pad + (bh - tpl.d*sc)/2;
+  x.beginPath();
+  tpl.poly.forEach((p, i) => { const px = ox + p.x*sc, py = h - oy - p.y*sc; i ? x.lineTo(px,py) : x.moveTo(px,py); });
+  x.closePath();
+  x.fillStyle = '#e63946'; x.fill();
+  x.strokeStyle = '#a01020'; x.lineWidth = 1; x.stroke();
+  return c.toDataURL();
+}
+
+function renderTplPicker() {
+  const t = getTpl(selectedTplId);
+  ['rect', 'poly'].forEach(m => {
+    const thumb = document.getElementById(m + 'TplThumb');
+    if (thumb) thumb.src = tplThumbDataURL(t);
+    const nm = document.getElementById(m + 'TplName');
+    if (nm) nm.textContent = `${t.name} (${t.w}×${t.d})`;
+  });
+}
+function toggleTplDropdown(which) {
+  which = which || 'rect';
+  const dd = document.getElementById(which + 'TplDropdown');
+  const other = document.getElementById((which === 'rect' ? 'poly' : 'rect') + 'TplDropdown');
+  if (other) other.style.display = 'none';
+  if (dd.style.display === 'none') { buildTplDropdown(which); dd.style.display = 'block'; }
+  else dd.style.display = 'none';
+  // recompute collapsible section-body height so dropdown isn't clipped by overflow:hidden
+  if (typeof expandAll === 'function') expandAll();
+}
+function buildTplDropdown(which) {
+  which = which || 'rect';
+  const dd = document.getElementById(which + 'TplDropdown');
+  dd.innerHTML = getAllTemplates().map(t => `
+    <div class="tpl-opt ${t.id===selectedTplId?'sel':''}" onclick="pickTpl('${t.id}')">
+      <img class="tpl-thumb" src="${tplThumbDataURL(t)}">
+      <div style="flex:1;min-width:0;">
+        <div class="tpl-opt-name">${t.name} ${t.std?'<span class="tpl-badge">มาตรฐาน</span>':''}</div>
+        <div class="tpl-opt-sub">${t.w}×${t.d} m · ${(t.w*t.d).toFixed(0)} m² · ${t.poly.length} จุด</div>
+      </div>
+      ${t.std ? '' : `<button class="tpl-opt-del" title="แก้" onclick="event.stopPropagation();openTplEditor('${t.id}')">⚙</button><button class="tpl-opt-del" title="ลบ" onclick="event.stopPropagation();deleteTpl('${t.id}')">🗑</button>`}
+    </div>`).join('');
+}
+function pickTpl(id) {
+  selectedTplId = id;
+  const rdd = document.getElementById('rectTplDropdown'); if (rdd) rdd.style.display = 'none';
+  const pdd = document.getElementById('polyTplDropdown'); if (pdd) pdd.style.display = 'none';
+  renderTplPicker();
+  if (typeof expandAll === 'function') expandAll();
+  if (appMode === 'rect') generate();
+}
+function deleteTpl(id) {
+  if (!confirm('ลบแบบร้านนี้?')) return;
+  saveCustomTpls(loadCustomTpls().filter(t => t.id !== id));
+  if (selectedTplId === id) selectedTplId = 'std-m';
+  buildTplDropdown(appMode === 'poly' ? 'poly' : 'rect'); renderTplPicker();
+  if (appMode === 'rect') generate();
+}
+
+function getStoreDims() {
+  const t = getTpl(selectedTplId);
+  let w = t.w, d = t.d;
+  if (parseInt(document.getElementById('rotateStore').value) === 1) [w, d] = [d, w];
+  return [w, d];
+}
+// Store footprint polygon (rotated to match getStoreDims). Coords in [0..w]×[0..d].
+function getStorePoly() {
+  const t = getTpl(selectedTplId);
+  let poly = t.poly.map(p => ({ x: p.x, y: p.y }));
+  if (parseInt(document.getElementById('rotateStore').value) === 1) {
+    poly = poly.map(p => ({ x: p.y, y: t.w - p.x }));  // 90° rotate into d×w bbox
+  }
+  return poly;
+}
+
+// ============================================================
+// TEMPLATE EDITOR (modal)
+// ============================================================
+const te = { pts: [], drawing: false, sel: null, drag: null, editingId: null, img: null, mouse: null, _attached: false };
+
+function openTplEditor(id) {
+  const base = id ? getTpl(id) : null;
+  if (base) {
+    te.editingId = base.std ? null : base.id;   // editing std → save as new copy
+    te.pts = base.poly.map(p => ({ x:p.x, y:p.y }));
+    te.img = base.img || null;
+    document.getElementById('teName').value = base.std ? base.name + ' (copy)' : base.name;
+    document.getElementById('teW').value = base.w;
+    document.getElementById('teD').value = base.d;
+    document.getElementById('teTitle').textContent = base.std ? '✏️ สร้างแบบร้าน (คัดลอกจากมาตรฐาน)' : '⚙ แก้ไขแบบร้าน';
+  } else {
+    te.editingId = null;
+    te.pts = rectPoly(20, 15);
+    te.img = null;
+    document.getElementById('teName').value = '';
+    document.getElementById('teW').value = 20;
+    document.getElementById('teD').value = 15;
+    document.getElementById('teTitle').textContent = '✏️ สร้างแบบร้าน (วาดรูปร่าง)';
+  }
+  te.drawing = false; te.sel = null; te.drag = null; te.mouse = null;
+  const fileEl = document.getElementById('teImgFile'); if (fileEl) fileEl.value = '';
+  document.getElementById('teDrawBtn').classList.remove('live');
+  document.getElementById('tplModal').style.display = 'flex';
+  if (!te._attached) { attachTeEvents(); te._attached = true; }
+  requestAnimationFrame(teRender);
+}
+function teLoadImg(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const im = new Image();
+    im.onload = () => {
+      const max = 700; let w = im.width, h = im.height;
+      const sc = Math.min(1, max / Math.max(w, h));
+      w = Math.round(w*sc); h = Math.round(h*sc);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      te.img = c.toDataURL('image/jpeg', 0.85);
+      teRender();
+    };
+    im.src = e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
+function teClearImg() { te.img = null; const f=document.getElementById('teImgFile'); if(f) f.value=''; teRender(); }
+function closeTplEditor() { document.getElementById('tplModal').style.display = 'none'; }
+
+function teView() {
+  const c = document.getElementById('teCanvas');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  const W = parseFloat(document.getElementById('teW').value) || 20;
+  const D = parseFloat(document.getElementById('teD').value) || 15;
+  const pad = 30;
+  const sc = Math.min((c.width - 2*pad) / W, (c.height - 2*pad) / D);
+  const ox = (c.width - W*sc)/2, oy = (c.height - D*sc)/2;
+  return { c, W, D, sc,
+    X: x => ox + x*sc, Y: y => c.height - oy - y*sc,
+    inv: (sx, sy) => ({ x: (sx - ox)/sc, y: (c.height - oy - sy)/sc }) };
+}
+function teSnap(v) {
+  const g = parseFloat(document.getElementById('teSnap').value) || 0;
+  return g > 0 ? Math.round(v/g)*g : Math.round(v*100)/100;
+}
+function teRender() {
+  const v = teView(), ctx = v.c.getContext('2d');
+  ctx.fillStyle = '#f5f5f0'; ctx.fillRect(0,0,v.c.width,v.c.height);
+  // bounding box of W×D
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.strokeRect(v.X(0), v.Y(v.D), v.W*v.sc, v.D*v.sc);
+  ctx.setLineDash([]);
+  // grid
+  const g = parseFloat(document.getElementById('teSnap').value) || 0;
+  if (g > 0 && g*v.sc > 6) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
+    for (let x=0; x<=v.W+1e-6; x+=g){ ctx.beginPath(); ctx.moveTo(v.X(x),v.Y(0)); ctx.lineTo(v.X(x),v.Y(v.D)); ctx.stroke(); }
+    for (let y=0; y<=v.D+1e-6; y+=g){ ctx.beginPath(); ctx.moveTo(v.X(0),v.Y(y)); ctx.lineTo(v.X(v.W),v.Y(y)); ctx.stroke(); }
+  }
+  // plan image (clipped to polygon footprint), drawn under the outline
+  if (te.img) {
+    const im = getImg(te.img, teRender);
+    if (im) {
+      ctx.save();
+      if (te.pts.length >= 3 && !te.drawing) {
+        ctx.beginPath();
+        te.pts.forEach((p,i)=>{ const px=v.X(p.x),py=v.Y(p.y); i?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+        ctx.closePath(); ctx.clip();
+      }
+      ctx.drawImage(im, v.X(0), v.Y(v.D), v.W*v.sc, v.D*v.sc);
+      ctx.restore();
+    }
+  }
+  // polygon
+  if (te.pts.length) {
+    ctx.beginPath();
+    te.pts.forEach((p,i)=>{ const px=v.X(p.x),py=v.Y(p.y); i?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    if (!te.drawing) ctx.closePath();
+    if (!te.img) { ctx.fillStyle = 'rgba(230,57,70,0.5)'; if(!te.drawing) ctx.fill(); }
+    ctx.strokeStyle = '#c1121f'; ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
+    // edge length labels
+    ctx.font = 'bold 10px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    const n = te.drawing ? te.pts.length-1 : te.pts.length;
+    for (let i=0;i<n;i++){ const a=te.pts[i],b=te.pts[(i+1)%te.pts.length]; const len=Math.hypot(b.x-a.x,b.y-a.y);
+      if(len<0.1)continue; const mx=v.X((a.x+b.x)/2),my=v.Y((a.y+b.y)/2);
+      ctx.fillStyle='rgba(245,245,240,0.9)'; const tw=ctx.measureText(len.toFixed(1)+'m').width+4;
+      ctx.fillRect(mx-tw/2,my-7,tw,13); ctx.fillStyle='#c1121f'; ctx.fillText(len.toFixed(1)+'m',mx,my); }
+    // vertices
+    te.pts.forEach((p,i)=>{ ctx.beginPath(); ctx.arc(v.X(p.x),v.Y(p.y), i===te.sel?7:5,0,7);
+      ctx.fillStyle = i===te.sel?'#ffd700':(i===0?'#e63946':'#1a7a3e'); ctx.fill();
+      ctx.strokeStyle='#004a6e'; ctx.lineWidth=1.5; ctx.stroke(); });
+  }
+  // crosshair + rubber-band guide (distance + angle from last vertex) while drawing
+  if (te.drawing && te.mouse) {
+    const { sx, sy } = te.mouse;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(46,213,115,0.7)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, v.c.height);
+    ctx.moveTo(0, sy); ctx.lineTo(v.c.width, sy); ctx.stroke(); ctx.setLineDash([]);
+    const w = v.inv(sx, sy);
+    let txt = `(${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
+    if (te.pts.length) {
+      const last = te.pts[te.pts.length - 1];
+      const dx = w.x - last.x, dy = w.y - last.y;
+      const dist = Math.hypot(dx, dy);
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI; ang = (ang + 360) % 360;
+      ctx.strokeStyle = 'rgba(46,213,115,0.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.moveTo(v.X(last.x), v.Y(last.y)); ctx.lineTo(sx, sy); ctx.stroke(); ctx.setLineDash([]);
+      txt += `  •  ${dist.toFixed(2)} m  •  ${ang.toFixed(0)}°`;
+    }
+    ctx.font = 'bold 11px Segoe UI';
+    const tw = ctx.measureText(txt).width + 8;
+    const lx = Math.min(sx + 12, v.c.width - tw - 2), ly = Math.max(sy - 22, 2);
+    ctx.fillStyle = 'rgba(20,40,25,0.88)'; ctx.fillRect(lx, ly, tw, 16);
+    ctx.fillStyle = '#9be7b4'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, lx + 4, ly + 8);
+    ctx.restore();
+  }
+  // info
+  const W=v.W, D=v.D, area = polyAreaPts(te.pts);
+  document.getElementById('teInfo').innerHTML = `จุด: <b>${te.pts.length}</b> · กรอบ ${W}×${D} m · พื้นที่รูป ≈ <b>${area.toFixed(1)}</b> m²`;
+}
+function polyAreaPts(pts){ if(pts.length<3)return 0; let a=0; for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length]; a+=p.x*q.y-q.x*p.y;} return Math.abs(a)/2; }
+
+function teToggleDraw() {
+  te.drawing = !te.drawing;
+  if (te.drawing) te.pts = [];   // start fresh draft
+  document.getElementById('teDrawBtn').classList.toggle('live', te.drawing);
+  document.getElementById('teDrawBtn').textContent = te.drawing ? '⏹ หยุดวาด' : '✏️ วาดรูป (คลิกลงจุด)';
+  te.sel = null; teRender();
+}
+function teClosePath() {
+  if (te.pts.length >= 2) { const f=te.pts[0],l=te.pts[te.pts.length-1]; if(Math.hypot(l.x-f.x,l.y-f.y)<0.6) te.pts.pop(); }
+  te.drawing = false; te.mouse = null;
+  document.getElementById('teDrawBtn').classList.remove('live');
+  document.getElementById('teDrawBtn').textContent = '✏️ วาดรูป (คลิกลงจุด)';
+  teRender();
+}
+function teDeleteSelected() { if(te.sel!=null && te.pts.length>3){ te.pts.splice(te.sel,1); te.sel=null; teRender(); } }
+function teUndo() { if(te.pts.length){ te.pts.pop(); teRender(); } }
+function teRect() { const W=parseFloat(document.getElementById('teW').value)||20, D=parseFloat(document.getElementById('teD').value)||15; te.pts=rectPoly(W,D); te.drawing=false; te.sel=null; document.getElementById('teDrawBtn').classList.remove('live'); teRender(); }
+function teClear() { te.pts=[]; te.sel=null; te.drawing=true; document.getElementById('teDrawBtn').classList.add('live'); document.getElementById('teDrawBtn').textContent='⏹ หยุดวาด'; teRender(); }
+function teSetDims() { teRender(); }
+
+function attachTeEvents() {
+  const c = document.getElementById('teCanvas');
+  function pos(e){ const r=c.getBoundingClientRect(); return {x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height)}; }
+  c.addEventListener('mousedown', e => {
+    const v=teView(), s=pos(e), w=v.inv(s.x,s.y);
+    if (te.drawing) {
+      if (te.pts.length>=3){ const f=te.pts[0]; if(Math.hypot(v.X(f.x)-s.x,v.Y(f.y)-s.y)<12){ teClosePath(); return; } }
+      te.pts.push({x:teSnap(w.x), y:teSnap(w.y)}); teRender(); return;
+    }
+    // select / start drag vertex
+    for (let i=0;i<te.pts.length;i++){ const p=te.pts[i]; if(Math.hypot(v.X(p.x)-s.x,v.Y(p.y)-s.y)<9){ te.sel=i; te.drag=i; teRender(); return; } }
+    te.sel=null; teRender();
+  });
+  c.addEventListener('mousemove', e => {
+    const s = pos(e);
+    if (te.drawing) { te.mouse = { sx: s.x, sy: s.y }; teRender(); return; }
+    if (te.drag == null) return;
+    const v = teView(), w = v.inv(s.x, s.y);
+    te.pts[te.drag] = { x: teSnap(w.x), y: teSnap(w.y) }; teRender();
+  });
+  c.addEventListener('mouseleave', () => { if (te.mouse) { te.mouse = null; if (te.drawing) teRender(); } });
+  window.addEventListener('mouseup', () => { te.drag=null; });
+}
+
+function saveTpl() {
+  if (te.drawing) teClosePath();
+  if (te.pts.length < 3) { alert('ต้องมีอย่างน้อย 3 จุด'); return; }
+  const name = (document.getElementById('teName').value || '').trim() || 'แบบร้านใหม่';
+  let poly = te.pts.map(p => ({ x: Math.round(p.x*100)/100, y: Math.round(p.y*100)/100 }));
+  // Normalize: shift shape flush to (0,0) and set W/D = drawn extent → no reserved margin around shape
+  const xs = poly.map(p => p.x), ys = poly.map(p => p.y);
+  const minX = Math.min(...xs), minY = Math.min(...ys), maxX = Math.max(...xs), maxY = Math.max(...ys);
+  poly = poly.map(p => ({ x: Math.round((p.x-minX)*100)/100, y: Math.round((p.y-minY)*100)/100 }));
+  const W = Math.round((maxX-minX)*100)/100 || (parseFloat(document.getElementById('teW').value) || 20);
+  const D = Math.round((maxY-minY)*100)/100 || (parseFloat(document.getElementById('teD').value) || 15);
+  const img = te.img || null;
+  const custom = loadCustomTpls();
+  if (te.editingId) {
+    const t = custom.find(t => t.id === te.editingId);
+    if (t) { t.name=name; t.w=W; t.d=D; t.poly=poly; t.img=img; }
+    selectedTplId = te.editingId;
+  } else {
+    const id = 'tpl-' + Date.now();
+    custom.push({ id, name, w:W, d:D, poly, img });
+    selectedTplId = id;
+  }
+  try { saveCustomTpls(custom); }
+  catch(e) { alert('บันทึกไม่สำเร็จ — รูปอาจใหญ่เกินโควต้า localStorage ลองใช้รูปเล็กลง'); return; }
+  renderTplPicker(); buildTplDropdown(appMode === 'poly' ? 'poly' : 'rect');
+  closeTplEditor();
+  if (appMode === 'rect') generate(); else { renderBldList(); polyRender(); }
+}
+
+// ============================================================
+// PARKING CALCULATION
+// ============================================================
+function calcParkingLayout(availW, availD, carW, carD, aisleW) {
+  // rearClear acts as aisle for the BOTTOM row — no aisle needed after last row
+  // Pattern: row | aisle | row | aisle | row  (aisle only BETWEEN rows)
+  const rows = [];
+  const carsPerRow = Math.floor(availW / carW);
+  if (carsPerRow <= 0) return { rows, totalCars: 0, usedDepth: 0 };
+
+  let y = 0;
+  while (y + carD <= availD) {
+    rows.push({ y, carsPerRow, carW, carD });
+    y += carD;
+    // Only add inter-row aisle if ANOTHER row can follow
+    if (y + aisleW + carD <= availD) {
+      y += aisleW;
+    } else {
+      break;
+    }
+  }
+
+  const usedDepth = rows.length > 0 ? rows[rows.length - 1].y + carD : 0;
+  const totalCars = rows.reduce((s, r) => s + r.carsPerRow, 0);
+  return { rows, totalCars, usedDepth };
+}
+
+// ============================================================
+// MAIN GENERATE
+// ============================================================
+function generate() {
+  const plotW   = parseFloat(document.getElementById('plotW').value)   || 30;
+  const plotD   = parseFloat(document.getElementById('plotD').value)   || 40;
+  const [storeW, storeD] = getStoreDims();
+  const sbBack  = parseFloat(document.getElementById('sbBack').value)  || 0;
+  const sbLeft  = parseFloat(document.getElementById('sbLeft').value)  || 0;
+  const sbRight = parseFloat(document.getElementById('sbRight').value) || 0;
+  const carW       = parseFloat(document.getElementById('carW').value)      || 2.5;
+  const carD       = parseFloat(document.getElementById('carD').value)      || 5;
+  const rearClear  = parseFloat(document.getElementById('rearClear').value)  || 0;
+  const storeClear = parseFloat(document.getElementById('storeClear').value) || 0;
+  const wheelStop  = parseFloat(document.getElementById('wheelStop').value)  || 0;
+  const aisleW     = rearClear; // follows ระยะถอย input
+
+  // Validation
+  const errEl = document.getElementById('errMsg');
+  let errors = [];
+
+  const needW = sbLeft + storeW + sbRight;
+  const needD = sbBack + storeD;
+
+  if (needW > plotW) errors.push(`⚠ ความกว้างไม่พอ: ต้องการ ${needW.toFixed(1)}m แต่มี ${plotW}m`);
+  if (needD > plotD) errors.push(`⚠ ความลึกไม่พอ: ต้องการ ${needD.toFixed(1)}m แต่มี ${plotD}m`);
+
+  if (errors.length) {
+    errEl.style.display = 'block';
+    errEl.textContent = errors.join('\n');
+  } else {
+    errEl.style.display = 'none';
+  }
+
+  // Store position: store at BACK, sbBack gap from rear boundary
+  // y=0 = road (canvas bottom), y=plotD = back (canvas top)
+  const storeX        = sbLeft;
+  const parkDepth     = plotD - sbBack - storeD;    // total front zone (road → store face)
+  const storeY_road   = parkDepth;
+  // Parking width respects side setbacks
+  const parkX         = sbLeft;
+  const parkWidth     = plotW - sbLeft - sbRight;
+  const parkSlotDepth = Math.max(0, parkDepth - rearClear - storeClear - wheelStop);
+
+  const parking   = calcParkingLayout(parkWidth, parkSlotDepth, carW, carD, aisleW);
+
+  // Layout (bottom→top): freeSpace | rearClear | slots | wheelStop | storeClear | store
+  // freeSpace at road; rearClear above it; slots above that; wheelStop curb before walkway
+  const freeSpace = Math.max(0, parkDepth - storeClear - wheelStop - parking.usedDepth - rearClear);
+  // Zone y-coords (real, y=0=road):
+  const z_freeTop   = freeSpace;                               // top of free space
+  const z_slotBot   = freeSpace + rearClear;                   // bottom of car slots
+  const z_slotTop   = freeSpace + rearClear + parking.usedDepth;
+  const z_wsTop     = z_slotTop + wheelStop;                   // top of wheel-stop curb (= bottom of walkway)
+
+  // Stats
+  const plotArea  = plotW * plotD;
+  const storeArea = storeW * storeD;
+  const parkArea  = parkWidth * parkDepth;
+
+  document.getElementById('sv-plot').textContent  = plotArea.toFixed(0);
+  document.getElementById('sv-store').textContent = storeArea.toFixed(0);
+  document.getElementById('sv-park').textContent  = Math.max(0, parkArea).toFixed(0);
+  document.getElementById('sv-cars').textContent  = errors.length ? '—' : parking.totalCars;
+  document.getElementById('sv-ratio').textContent = ((storeArea / plotArea) * 100).toFixed(1) + '%';
+
+  const statusEl = document.getElementById('sv-status');
+  if (errors.length) {
+    statusEl.textContent = '❌ ไม่พอ';
+    statusEl.className = 'status-badge badge-err';
+  } else if (parking.totalCars >= 5) {
+    statusEl.textContent = '✅ ผ่าน';
+    statusEl.className = 'status-badge badge-ok';
+  } else if (parking.totalCars === 0) {
+    statusEl.textContent = '⚠ ที่จอดไม่พอ';
+    statusEl.className = 'status-badge badge-err';
+  } else {
+    statusEl.textContent = '⚠ ที่จอดน้อย';
+    statusEl.className = 'status-badge badge-err';
+  }
+
+  lastLayout = {
+    plotW, plotD, storeW, storeD, storeX,
+    storeY_road,
+    sbBack, sbLeft, sbRight,
+    parkX, parkWidth, parkDepth, parkSlotDepth, rearClear, storeClear, wheelStop, parking,
+    freeSpace, z_freeTop, z_slotBot, z_slotTop, z_wsTop,
+    carW, carD, aisleW,
+    storePoly: getStorePoly(),
+    storeImg: getStoreImg(),
+    valid: errors.length === 0,
+  };
+
+  draw(lastLayout);
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function draw(L) {
+  const canvas = document.getElementById('canvas');
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;   // logical (CSS) px
+  canvas.width  = Math.round(cw * dpr);
+  canvas.height = Math.round(ch * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);                // render at device resolution → crisp clip/edges
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+
+  // Margins: top/right/bottom extra for labels
+  const ML = 50, MR = 50, MT = 40, MB = 60; // road label at bottom
+
+  const scaleX = (cw - ML - MR) / L.plotW;
+  const scaleY = (ch - MT - MB) / L.plotD;
+  const SC = Math.min(scaleX, scaleY);
+
+  const OX = ML + ((cw - ML - MR) - L.plotW * SC) / 2;
+  const OY = MT + ((ch - MT - MB) - L.plotD * SC) / 2;
+
+  // Coordinate helpers
+  // Real: x=left→right, y=0 (road/front) → plotD (back)
+  // Canvas: x increases right, y increases DOWN
+  // So canvas_y = OY + (plotD - real_y) * SC   (flip y so road=bottom)
+  const cx = x => OX + x * SC;
+  const cy = y => OY + (L.plotD - y) * SC;
+  const cs = s => s * SC;
+
+  // ---- Background ----
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // ---- Ground inside plot ----
+  ctx.fillStyle = '#e8e8de';
+  ctx.fillRect(cx(0), cy(L.plotD), cs(L.plotW), cs(L.plotD));
+
+  // ---- Clip everything to plot boundary (prevents store/zones overflowing) ----
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cx(0), cy(L.plotD), cs(L.plotW), cs(L.plotD));
+  ctx.clip();
+
+  // ---- Zone layout (bottom→top): amber(rearClear) | blue(slots) | green(storeClear) | store ----
+
+  // ── Zone drawing: bottom→top ──────────────────────────────────────────────
+  // GRAY — Free space: y=0 → freeSpace  (at road, bottommost)
+  if (L.freeSpace > 0) {
+    const fsTop = cy(L.z_freeTop); const fsBot = cy(0); const fsH = fsBot - fsTop;
+    ctx.fillStyle = 'rgba(180,180,180,0.18)';
+    ctx.fillRect(cx(0), fsTop, cs(L.plotW), fsH);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx(0), fsTop, cs(L.plotW), fsH); ctx.clip();
+    ctx.strokeStyle = 'rgba(150,150,150,0.3)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    for (let i=-fsH; i<cs(L.plotW)+fsH; i+=16) {
+      ctx.beginPath(); ctx.moveTo(cx(0)+i, fsTop); ctx.lineTo(cx(0)+i+fsH, fsTop+fsH); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.restore();
+    if (fsH > 12) {
+      ctx.fillStyle='rgba(100,100,100,0.8)'; ctx.font=`bold ${Math.max(9,cs(0.6))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`Free Space ${L.freeSpace.toFixed(1)} m`, cx(L.plotW/2), fsTop+fsH/2);
+    }
+  }
+
+  // AMBER — ระยะถอย: y=freeSpace → z_slotBot  (above freeSpace, exact = rearClear)
+  if (L.rearClear > 0) {
+    const rcTop = cy(L.z_slotBot); const rcBot = cy(L.z_freeTop); const rcH = rcBot - rcTop;
+    ctx.fillStyle = 'rgba(255,180,30,0.22)';
+    ctx.fillRect(cx(0), rcTop, cs(L.plotW), rcH);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx(0), rcTop, cs(L.plotW), rcH); ctx.clip();
+    ctx.strokeStyle = 'rgba(200,130,0,0.38)'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+    for (let i=-rcH; i<cs(L.plotW)+rcH; i+=18) {
+      ctx.beginPath(); ctx.moveTo(cx(0)+i, rcTop); ctx.lineTo(cx(0)+i+rcH, rcTop+rcH); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.restore();
+    if (rcH > 14) {
+      ctx.fillStyle='rgba(140,80,0,0.9)'; ctx.font=`bold ${Math.max(9,cs(0.65))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`ระยะถอย ${L.rearClear} m`, cx(L.plotW/2), rcTop+rcH/2);
+      if (L.parking.totalCars === 0 && rcH > 32) {
+        const need = (L.rearClear + L.storeClear + L.carD).toFixed(0);
+        ctx.font = `${Math.max(8,cs(0.55))}px Segoe UI`;
+        ctx.fillStyle = 'rgba(200,60,0,0.92)';
+        ctx.fillText(`⚠ ต้องการ ${need}m จากถนน (มี ${L.parkDepth.toFixed(1)}m)`, cx(L.plotW/2), rcTop+rcH/2 + Math.max(12,cs(0.72)));
+      }
+    }
+  }
+
+  // BLUE — parking slot bg: y=z_slotBot → z_slotTop  (parkX width only)
+  if (L.parking.usedDepth > 0) {
+    const pTop = cy(L.z_slotTop); const pBot = cy(L.z_slotBot); const pH = pBot - pTop;
+    ctx.fillStyle = 'rgba(72,202,228,0.14)';
+    ctx.fillRect(cx(L.parkX), pTop, cs(L.parkWidth), pH);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx(L.parkX), pTop, cs(L.parkWidth), pH); ctx.clip();
+    ctx.strokeStyle='rgba(72,202,228,0.28)'; ctx.lineWidth=1; ctx.setLineDash([6,6]);
+    for (let i=-pH; i<cs(L.parkWidth)+pH; i+=22) {
+      ctx.beginPath(); ctx.moveTo(cx(L.parkX)+i, pTop); ctx.lineTo(cx(L.parkX)+i+pH, pTop+pH); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.restore();
+  }
+
+  // DARK CURB — หมอนจอด wheelStop: y=z_slotTop → z_wsTop
+  if (L.wheelStop > 0) {
+    const wsTop = cy(L.z_wsTop); const wsBot = cy(L.z_slotTop); const wsH = wsBot - wsTop;
+    ctx.fillStyle = 'rgba(90,90,100,0.5)';
+    ctx.fillRect(cx(L.parkX), wsTop, cs(L.parkWidth), wsH);
+    ctx.strokeStyle='rgba(60,60,70,0.8)'; ctx.lineWidth=1; ctx.setLineDash([]);
+    ctx.strokeRect(cx(L.parkX), wsTop, cs(L.parkWidth), wsH);
+    if (wsH > 11) {
+      ctx.fillStyle='rgba(40,40,50,0.95)'; ctx.font=`bold ${Math.max(8,cs(0.55))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`หมอนจอด ${L.wheelStop} m`, cx(L.parkX+L.parkWidth/2), wsTop+wsH/2);
+    }
+  }
+
+  // GREEN — ทางเดิน storeClear: y=z_wsTop → z_wsTop+storeClear
+  if (L.storeClear > 0) {
+    const scTop = cy(L.z_wsTop + L.storeClear); const scH = cs(L.storeClear);
+    ctx.fillStyle = 'rgba(100,200,120,0.22)';
+    ctx.fillRect(cx(L.parkX), scTop, cs(L.parkWidth), scH);
+    ctx.strokeStyle='rgba(60,160,80,0.4)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.strokeRect(cx(L.parkX), scTop, cs(L.parkWidth), scH);
+    ctx.setLineDash([]);
+    if (scH > 12) {
+      ctx.fillStyle='rgba(30,110,50,0.9)'; ctx.font=`bold ${Math.max(8,cs(0.6))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`ทางเดิน ${L.storeClear} m`, cx(L.parkX+L.parkWidth/2), scTop+scH/2);
+    }
+  }
+
+  // ---- Setback zone overlay (light pink hatch) ----
+  drawSetbackHatch(ctx, cx, cy, cs, L);
+
+  // ---- Parking car slots ----
+  if (L.valid && L.parkSlotDepth > 0) {
+    drawParkingSlots(ctx, cx, cy, cs, L);
+  }
+
+  // ---- Store footprint (polygon from template) ----
+  const storeCanvasX = cx(L.storeX);
+  const storeCanvasY = cy(L.storeY_road + L.storeD); // top of bbox in canvas
+  const storePxW = cs(L.storeW);
+  const storePxH = cs(L.storeD);
+  const SP = (L.storePoly && L.storePoly.length >= 3) ? L.storePoly : rectPoly(L.storeW, L.storeD);
+  const storePath = (dx, dy) => {
+    ctx.beginPath();
+    SP.forEach((p, i) => {
+      const px = cx(L.storeX + p.x) + dx, py = cy(L.storeY_road + p.y) + dy;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.closePath();
+  };
+
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; storePath(4, 4); ctx.fill();
+
+  // fill: plan image (clipped to footprint) if template has one, else solid red
+  const storeFits = (L.storeX + L.storeW <= L.plotW) && (L.storeY_road + L.storeD <= L.plotD);
+  const storeImgEl = L.storeImg ? getImg(L.storeImg, () => draw(lastLayout)) : null;
+  if (storeImgEl) {
+    ctx.save(); storePath(0, 0); ctx.clip();
+    ctx.globalAlpha = storeFits ? 1 : 0.5;
+    ctx.drawImage(storeImgEl, storeCanvasX, storeCanvasY, storePxW, storePxH);
+    ctx.globalAlpha = 1; ctx.restore();
+  } else {
+    ctx.fillStyle = storeFits ? '#e63946' : 'rgba(230,57,70,0.45)';
+    storePath(0, 0); ctx.fill();
+  }
+
+  // border
+  ctx.strokeStyle = '#a01020'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  storePath(0, 0); ctx.stroke();
+
+  // ---- Store label (skip big centered label when a plan image is shown) ----
+  const storeMidX = storeCanvasX + storePxW / 2;
+  const storeMidY = storeCanvasY + storePxH / 2;
+  if (!storeImgEl) {
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const fs1 = Math.min(18, Math.max(10, cs(1.4)));
+    const fs2 = Math.min(13, Math.max(8,  cs(0.9)));
+    ctx.font = `bold ${fs1}px Segoe UI`;
+    ctx.fillText('7-ELEVEN', storeMidX, storeMidY - cs(0.7));
+    ctx.font = `${fs2}px Segoe UI`;
+    ctx.fillText(`${L.storeW} × ${L.storeD} m  (${(L.storeW*L.storeD).toFixed(0)} m²)`, storeMidX, storeMidY + cs(0.7));
+  }
+
+  // ---- Warning overlay if store exceeds plot ----
+  if (!storeFits) {
+    const warnFs = Math.min(14, Math.max(9, cs(0.85)));
+    ctx.fillStyle = 'rgba(255,60,60,0.92)';
+    ctx.font = `bold ${warnFs}px Segoe UI`;
+    ctx.fillText('⚠ ร้านเกินขนาดที่ดิน', storeMidX, storeMidY + cs(2));
+  }
+
+  // ---- Entrance arrow ----
+  drawEntrance(ctx, cx, cy, cs, L);
+
+  // ---- End plot clip — restore before things that draw outside plot (labels, road, etc.) ----
+  ctx.restore();
+
+  // ---- Plot boundary ----
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+  ctx.strokeRect(cx(0), cy(L.plotD), cs(L.plotW), cs(L.plotD));
+
+  // ---- North arrow ----
+  drawNorthArrow(ctx, cx(L.plotW) + 12, cy(L.plotD) + 12, 20);
+
+  // ---- Dimension annotations ----
+  drawDimensions(ctx, cx, cy, cs, L);
+
+  // ---- Road ----
+  drawRoad(ctx, cx(0), cy(0), cs(L.plotW));
+
+  // ---- Scale bar ----
+  drawScaleBar(ctx, cx(0) + 8, cy(0) - 12, SC);
+}
+
+function drawSetbackHatch(ctx, cx, cy, cs, L) {
+  // Dashed lines: back, left, right setbacks only (no front)
+  ctx.strokeStyle = 'rgba(200, 80, 80, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+
+  // Back setback line (horizontal)
+  if (L.sbBack > 0) {
+    ctx.beginPath();
+    ctx.moveTo(cx(0),      cy(L.plotD - L.sbBack));
+    ctx.lineTo(cx(L.plotW), cy(L.plotD - L.sbBack));
+    ctx.stroke();
+  }
+  // Left setback line (vertical)
+  if (L.sbLeft > 0) {
+    ctx.beginPath();
+    ctx.moveTo(cx(L.sbLeft), cy(L.plotD));
+    ctx.lineTo(cx(L.sbLeft), cy(0));
+    ctx.stroke();
+  }
+  // Right setback line (vertical)
+  if (L.sbRight > 0) {
+    ctx.beginPath();
+    ctx.moveTo(cx(L.plotW - L.sbRight), cy(L.plotD));
+    ctx.lineTo(cx(L.plotW - L.sbRight), cy(0));
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Labels
+  ctx.fillStyle = 'rgba(180, 60, 60, 0.9)';
+  ctx.font = `bold ${Math.max(8, cs(0.6))}px Segoe UI`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (L.sbBack > 0 && cs(L.sbBack) > 10)
+    ctx.fillText(`${L.sbBack}m`, cx(L.plotW / 2), cy(L.plotD) + cs(L.sbBack / 2));
+  if (L.sbLeft > 0 && cs(L.sbLeft) > 10) {
+    ctx.save(); ctx.translate(cx(L.sbLeft/2), cy(L.storeY_road + L.storeD/2)); ctx.rotate(-Math.PI/2);
+    ctx.fillText(`${L.sbLeft}m`, 0, 0); ctx.restore();
+  }
+  if (L.sbRight > 0 && cs(L.sbRight) > 10) {
+    ctx.save(); ctx.translate(cx(L.plotW - L.sbRight/2), cy(L.storeY_road + L.storeD/2)); ctx.rotate(-Math.PI/2);
+    ctx.fillText(`${L.sbRight}m`, 0, 0); ctx.restore();
+  }
+}
+
+function drawParkingSlots(ctx, cx, cy, cs, L) {
+  const { rows } = L.parking;
+  // Top-align slots: push toward store (storeClear gap), rows fill downward from slotZoneTop
+  // slotZoneTop = parkDepth - storeClear
+  // usedDepth   = parking.usedDepth (total height of all rows)
+  // rowOffset   = slotZoneTop - usedDepth  (so last row top = slotZoneTop)
+  // Slots bottom = z_slotBot, top = z_slotTop
+  // row.y local 0-based → real_y = row.y + z_slotBot
+  const rowOffset = L.z_slotBot;
+
+  rows.forEach(row => {
+    for (let i = 0; i < row.carsPerRow; i++) {
+      const carRealX        = L.parkX + i * L.carW;   // offset by parkX (side setbacks)
+      const carRealY_bottom = row.y + rowOffset;
+      const carRealY_top    = row.y + L.carD + rowOffset;
+
+      const px = cx(carRealX) + 1;
+      const py = cy(carRealY_top) + 1;
+      const pw = cs(L.carW) - 2;
+      const ph = cs(L.carD) - 2;
+
+      ctx.fillStyle = 'rgba(144, 224, 239, 0.8)';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = '#0096c7';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([]);
+      ctx.strokeRect(px, py, pw, ph);
+
+      if (cs(L.carW) > 24 && cs(L.carD) > 20) {
+        ctx.fillStyle = '#007ea8';
+        ctx.font = `${Math.min(12, cs(0.7))}px Segoe UI`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🚗', px + pw / 2, py + ph / 2);
+      }
+    }
+  });
+
+  // Aisle labels (between double-bank rows, offset by rearClear)
+  ctx.font = `${Math.max(8, cs(0.6))}px Segoe UI`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const nextRow = rows[i + 1];
+    if (nextRow && Math.abs((nextRow.y) - (row.y + L.carD) - L.aisleW) < 0.1) {
+      const aisleRealYMid = row.y + L.carD + L.aisleW / 2 + L.z_slotBot;
+      if (cs(L.aisleW) > 16) {
+        const ay = cy(aisleRealYMid + L.aisleW/2), aH = cs(L.aisleW);
+        ctx.fillStyle = 'rgba(255,180,30,0.22)';
+        ctx.fillRect(cx(0), ay, cs(L.plotW), aH);
+        ctx.save(); ctx.beginPath(); ctx.rect(cx(0), ay, cs(L.plotW), aH); ctx.clip();
+        ctx.strokeStyle='rgba(200,130,0,0.38)'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+        for (let j=-aH; j<cs(L.plotW)+aH; j+=18) { ctx.beginPath(); ctx.moveTo(cx(0)+j,ay); ctx.lineTo(cx(0)+j+aH,ay+aH); ctx.stroke(); }
+        ctx.setLineDash([]); ctx.restore();
+        ctx.fillStyle = 'rgba(140,80,0,0.9)';
+        ctx.fillText(`ระยะถอย ${L.aisleW}m`, cx(L.plotW / 2), cy(aisleRealYMid));
+      }
+      i++;
+    }
+  }
+
+  // Parking zone label
+  if (L.parkSlotDepth > 4) {
+    ctx.fillStyle = 'rgba(0,150,200,0.9)';
+    ctx.font = `bold ${Math.max(9, cs(0.7))}px Segoe UI`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(
+      `Parking: ${L.parkWidth.toFixed(1)} × ${L.parkSlotDepth.toFixed(1)} m`,
+      cx(L.plotW) - 4,
+      cy(L.parkDepth) + 4
+    );
+  }
+}
+
+function drawEntrance(ctx, cx, cy, cs, L) {
+  // Arrow pointing from road into store (at store front center)
+  const arrowX = cx(L.storeX + L.storeW / 2);
+  const arrowY = cy(L.storeY_road) + 2;
+  const arrowLen = Math.min(cs(L.storeY_road) * 0.4, 24);
+
+  if (arrowLen < 6) return;
+
+  ctx.strokeStyle = '#2ed573';
+  ctx.fillStyle = '#2ed573';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.moveTo(arrowX, arrowY + arrowLen);
+  ctx.lineTo(arrowX, arrowY);
+  ctx.stroke();
+
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(arrowX, arrowY);
+  ctx.lineTo(arrowX - 5, arrowY + 8);
+  ctx.lineTo(arrowX + 5, arrowY + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Label
+  ctx.font = `bold 9px Segoe UI`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('ทางเข้า', arrowX, arrowY + arrowLen + 2);
+}
+
+function drawRoad(ctx, roadX, roadY, roadW) {
+  // Road below the plot
+  const rH = 28;
+  ctx.fillStyle = '#444';
+  ctx.fillRect(roadX, roadY, roadW, rH);
+
+  // Road markings (dashes)
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([18, 12]);
+  ctx.beginPath();
+  ctx.moveTo(roadX, roadY + rH / 2);
+  ctx.lineTo(roadX + roadW, roadY + rH / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '10px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('◄  ถนน  Road  ►', roadX + roadW / 2, roadY + rH / 2);
+}
+
+function drawNorthArrow(ctx, x, y, size) {
+  ctx.fillStyle = '#555';
+  ctx.font = `bold ${size * 0.5}px Segoe UI`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', x, y);
+
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.3);
+  ctx.lineTo(x - size * 0.15, y + size * 0.1);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + size * 0.15, y + size * 0.1);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fillStyle = '#555';
+  ctx.fill();
+}
+
+function drawScaleBar(ctx, x, y, SC) {
+  // Pick a nice round number: how many meters gives ~60px?
+  const targetPx = 60;
+  const niceVals = [1,2,5,10,15,20,25,50,100];
+  let best = 5;
+  for (const v of niceVals) {
+    if (v * SC <= targetPx) best = v;
+    else break;
+  }
+  const barPx = best * SC;
+
+  ctx.fillStyle = '#444';
+  ctx.fillRect(x, y, barPx, 4);
+  ctx.fillRect(x, y - 3, 2, 10);
+  ctx.fillRect(x + barPx - 2, y - 3, 2, 10);
+
+  ctx.fillStyle = '#444';
+  ctx.font = '9px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${best} m`, x + barPx / 2, y - 4);
+}
+
+function drawDimensions(ctx, cx, cy, cs, L) {
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#555';
+  ctx.fillStyle = '#333';
+  ctx.lineWidth = 1;
+
+  function dimH(x1, x2, yReal, offset, label) {
+    // Horizontal dimension line at yReal, offset above/below
+    const py = cy(yReal) + offset;
+    const px1 = cx(x1), px2 = cx(x2);
+    if (Math.abs(px2 - px1) < 20) return;
+
+    ctx.beginPath();
+    ctx.moveTo(px1, cy(yReal)); ctx.lineTo(px1, py); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px2, cy(yReal)); ctx.lineTo(px2, py); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px1, py); ctx.lineTo(px2, py); ctx.stroke();
+
+    // Arrows
+    arrowHead(ctx, px2, py, 'right');
+    arrowHead(ctx, px1, py, 'left');
+
+    ctx.fillStyle = '#333';
+    ctx.font = `bold ${Math.max(9, Math.min(12, cs(0.75)))}px Segoe UI`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const bg = ctx.measureText(label).width + 6;
+    ctx.fillStyle = 'rgba(245,245,240,0.85)';
+    ctx.fillRect((px1+px2)/2 - bg/2, py - 7, bg, 13);
+    ctx.fillStyle = '#333';
+    ctx.fillText(label, (px1+px2)/2, py);
+  }
+
+  function dimV(y1, y2, xReal, offset, label) {
+    // Vertical dimension line
+    const px = cx(xReal) + offset;
+    const py1 = cy(y1), py2 = cy(y2);
+    if (Math.abs(py2 - py1) < 20) return;
+
+    ctx.beginPath();
+    ctx.moveTo(cx(xReal), py1); ctx.lineTo(px, py1); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx(xReal), py2); ctx.lineTo(px, py2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px, py1); ctx.lineTo(px, py2); ctx.stroke();
+
+    arrowHead(ctx, px, py1, 'up');
+    arrowHead(ctx, px, py2, 'down');
+
+    ctx.save();
+    ctx.translate(px, (py1+py2)/2);
+    ctx.rotate(-Math.PI/2);
+    const bg = ctx.measureText(label).width + 6;
+    ctx.fillStyle = 'rgba(245,245,240,0.85)';
+    ctx.fillRect(-bg/2, -7, bg, 13);
+    ctx.fillStyle = '#333';
+    ctx.font = `bold ${Math.max(9, Math.min(12, cs(0.75)))}px Segoe UI`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  }
+
+  // Plot width (top)
+  dimH(0, L.plotW, L.plotD, -20, `${L.plotW} m`);
+  // Plot depth (right side)
+  dimV(0, L.plotD, L.plotW, 22, `${L.plotD} m`);
+
+  // Store width
+  if (cs(L.storeW) > 40) {
+    dimH(L.storeX, L.storeX + L.storeW, L.storeY_road + L.storeD, -14, `${L.storeW} m`);
+  }
+  // Store depth
+  if (cs(L.storeD) > 30) {
+    dimV(L.storeY_road, L.storeY_road + L.storeD, L.storeX + L.storeW, 14, `${L.storeD} m`);
+  }
+
+  // Parking depth
+  if (L.parkDepth > 0 && cs(L.parkDepth) > 30) {
+    dimV(0, L.parkDepth, 0, -22, `${L.parkDepth.toFixed(1)} m`);
+  }
+}
+
+function arrowHead(ctx, x, y, dir) {
+  const s = 4;
+  ctx.beginPath();
+  if (dir === 'right') {
+    ctx.moveTo(x, y); ctx.lineTo(x-s*1.5, y-s*0.6); ctx.lineTo(x-s*1.5, y+s*0.6);
+  } else if (dir === 'left') {
+    ctx.moveTo(x, y); ctx.lineTo(x+s*1.5, y-s*0.6); ctx.lineTo(x+s*1.5, y+s*0.6);
+  } else if (dir === 'up') {
+    ctx.moveTo(x, y); ctx.lineTo(x-s*0.6, y+s*1.5); ctx.lineTo(x+s*0.6, y+s*1.5);
+  } else {
+    ctx.moveTo(x, y); ctx.lineTo(x-s*0.6, y-s*1.5); ctx.lineTo(x+s*0.6, y-s*1.5);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#555';
+  ctx.fill();
+}
+
+// ============================================================
+// POLYGON MODE
+// ============================================================
+let appMode = 'rect';
+const poly = {
+  plots: [],        // [[{x,y},...], ...] world meters, y up
+  zones: [],        // [{...}] generated parking zones
+  sbZones: [],      // [{storeId, side, dist}] drawn setback zones
+  swZones: [],      // [{storeId, side, dist}] drawn sidewalk zones (left/right/back)
+  sidewalks: [      // config list for sidewalk zones
+    {id:1, side:'left',  dist:1.5},
+    {id:2, side:'right', dist:1.5},
+    {id:3, side:'back',  dist:1.5},
+  ],
+  swNextId: 4,
+  draft: [],        // polygon vertices being drawn
+  drawing: false,
+  buildings: [],    // {id,x,y,w,d,rot,label,type,color}
+  selected: null,   // building id
+  selPlot: null,    // selected plot index (for edge/vertex editing)
+  view: null,       // last render transform {scale,minX,minY,pad,ecx,ecy,ch}
+  drag: null,       // {id,offx,offy,moved}
+  dragV: null,      // {pi,vi} — dragging a plot vertex
+  dragZone: null,   // {zi,offx,offy} — dragging a parking zone
+  hovV: null,       // {pi,vi} — hovered vertex (for cursor)
+  mouse: null,      // {sx,sy} screen pos while drawing (crosshair guide)
+  nextId: 1,
+  // Zoom/pan
+  manualView: null, // {scale,originX,originY} — overrides auto-fit when set
+  // Setbacks
+  setbacks: [
+    {id:1, side:'back',  dist:3},
+    {id:2, side:'left',  dist:3},
+    {id:3, side:'right', dist:3},
+  ],
+  sbNextId: 4,
+  parkZones: [
+    {id:1, carW:2.5, carD:5, rearClear:10, storeClear:2, wheelStop:1, roadSide:'south', sidewalk:0},
+  ],
+  pzNextId: 2,
+  // Undo history
+  history: [],      // stack of JSON snapshots
+};
+
+const BLD_DEFAULT = {
+  store:     { color:'#e63946', label:'7-Eleven',       w:20, d:15 },
+  neighbor:  { color:'#8d99ae', label:'อาคารข้างเคียง',  w:8,  d:12 },
+  shophouse: { color:'#d4a373', label:'ตึกแถว',          w:4,  d:12 },
+};
+
+function setMode(m) {
+  appMode = m;
+  document.getElementById('modeRectBtn').classList.toggle('active', m === 'rect');
+  document.getElementById('modePolyBtn').classList.toggle('active', m === 'poly');
+  document.getElementById('rectPanel').style.display = m === 'rect' ? '' : 'none';
+  document.getElementById('polyPanel').style.display = m === 'poly' ? '' : 'none';
+  document.getElementById('errMsg').style.display = 'none';
+  const lbls = document.querySelectorAll('.stat-lbl');
+  if (m === 'rect') {
+    if (lbls[2]) lbls[2].textContent = 'พื้นที่จอดรถ (m²)';
+    if (lbls[3]) lbls[3].textContent = 'ที่จอดได้ (คัน)';
+    generate();
+  } else {
+    poly.drawing = false; renderSidewalkList(); renderParkZoneList(); renderPlotList(); renderPlotEditor(); renderBldList(); polyRender();
+  }
+}
+
+// ---- Geometry ----
+function polyArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a) / 2;
+}
+function pointInPoly(px, py, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, yi = pts[i].y, xj = pts[j].x, yj = pts[j].y;
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function pointInAnyPlot(px, py) { return poly.plots.some(p => pointInPoly(px, py, p)); }
+
+function bldRect(b) {
+  const w = b.rot ? b.d : b.w;
+  const h = b.rot ? b.w : b.d;
+  return { x: b.x, y: b.y, w, h };
+}
+function bldCorners(b) {
+  const r = bldRect(b);
+  return [
+    { x: r.x, y: r.y }, { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h },
+  ];
+}
+function bldFits(b) {
+  if (!poly.plots.length) return true;
+  const r = bldRect(b);
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  return bldCorners(b).every(c => pointInAnyPlot(c.x, c.y)) && pointInAnyPlot(cx, cy);
+}
+function bldHit(b, wx, wy) {
+  const r = bldRect(b);
+  return wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h;
+}
+
+// ---- View transform ----
+function computeView(cw, ch) {
+  // Manual zoom/pan overrides auto-fit
+  if (poly.manualView) {
+    const { scale, originX, originY } = poly.manualView;
+    // originX/Y = world coords at canvas center
+    const pad = 0;
+    const minX = originX - (cw / 2) / scale;
+    const minY = originY - (ch / 2) / scale;
+    return { scale, minX, minY, pad: 0, ecx: 0, ecy: 0, ch, manual: true };
+  }
+
+  const pad = 46;
+  let pts = [];
+  poly.plots.forEach(p => pts.push(...p));
+  poly.buildings.forEach(b => pts.push(...bldCorners(b)));
+  pts.push(...poly.draft);
+
+  let minX, minY, maxX, maxY;
+  if (pts.length === 0 || poly.drawing) {
+    const vm = parseFloat(document.getElementById('viewMeters').value) || 50;
+    minX = 0; minY = 0; maxX = vm; maxY = vm * (ch / cw);
+  } else {
+    minX = Math.min(...pts.map(p => p.x)); maxX = Math.max(...pts.map(p => p.x));
+    minY = Math.min(...pts.map(p => p.y)); maxY = Math.max(...pts.map(p => p.y));
+    if (maxX - minX < 1) maxX = minX + 1;
+    if (maxY - minY < 1) maxY = minY + 1;
+  }
+  const wW = maxX - minX, hW = maxY - minY;
+  const scale = Math.min((cw - 2 * pad) / wW, (ch - 2 * pad) / hW);
+  const ecx = ((cw - 2 * pad) - wW * scale) / 2;
+  const ecy = ((ch - 2 * pad) - hW * scale) / 2;
+  return { scale, minX, minY, pad, ecx, ecy, ch };
+}
+function vcx(v, x) { return v.pad + v.ecx + (x - v.minX) * v.scale; }
+function vcy(v, y) { return v.ch - v.pad - v.ecy - (y - v.minY) * v.scale; }
+function worldFromScreen(v, sx, sy) {
+  return {
+    x: v.minX + (sx - v.pad - v.ecx) / v.scale,
+    y: v.minY + (v.ch - v.pad - v.ecy - sy) / v.scale,
+  };
+}
+function snap(val) {
+  const g = parseFloat(document.getElementById('snapGrid').value) || 0;
+  return g > 0 ? Math.round(val / g) * g : Math.round(val * 100) / 100;
+}
+
+// ---- Drawing plots ----
+function toggleDrawPlot() {
+  poly.drawing = !poly.drawing;
+  if (!poly.drawing && poly.draft.length >= 3) closeDraftPlot();
+  else if (!poly.drawing) poly.draft = [];
+  document.getElementById('drawBtn').classList.toggle('live', poly.drawing);
+  document.getElementById('drawBtn').textContent = poly.drawing ? '⏹ หยุดวาด (คลิกลงจุด)' : '✏️ วาดที่ดิน (คลิกลงจุด)';
+  if (!poly.drawing) poly.mouse = null;
+  updateCanvasCursor();
+  polyRender();
+}
+function closeDraftPlot() { polySnapshot();
+  // Drop trailing vertex if it duplicates the first (user clicked back on start)
+  if (poly.draft.length >= 2) {
+    const f = poly.draft[0], l = poly.draft[poly.draft.length - 1];
+    if (Math.hypot(l.x - f.x, l.y - f.y) < 0.6) poly.draft.pop();
+  }
+  if (poly.draft.length >= 3) poly.plots.push(poly.draft.slice());
+  poly.draft = [];
+  poly.drawing = false;
+  poly.mouse = null;
+  document.getElementById('drawBtn').classList.remove('live');
+  document.getElementById('drawBtn').textContent = '✏️ วาดที่ดิน (คลิกลงจุด)';
+  updateCanvasCursor();
+  renderPlotList(); polyRender();
+}
+function undoVertex() {
+  if (poly.draft.length) poly.draft.pop();
+  polyRender();
+}
+function deletePlot(i) { polySnapshot();
+  poly.plots.splice(i, 1);
+  if (poly.selPlot === i) poly.selPlot = null;
+  else if (poly.selPlot > i) poly.selPlot--;
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+function selectPlot(i) {
+  poly.selPlot = poly.selPlot === i ? null : i;
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+
+// ---- Edit plot geometry (edge length / bearing / vertex coords) ----
+function edgeBearing(a, b) {
+  let deg = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+  return (deg + 360) % 360;
+}
+function setEdgeLength(pi, i, len) { polySnapshot();
+  const v = poly.plots[pi]; if (!v) return;
+  const a = v[i], b = v[(i + 1) % v.length];
+  const cur = Math.hypot(b.x - a.x, b.y - a.y);
+  const ux = cur < 1e-6 ? 1 : (b.x - a.x) / cur;
+  const uy = cur < 1e-6 ? 0 : (b.y - a.y) / cur;
+  b.x = Math.round((a.x + ux * len) * 100) / 100;
+  b.y = Math.round((a.y + uy * len) * 100) / 100;
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+function setEdgeBearing(pi, i, deg) { polySnapshot();
+  const v = poly.plots[pi]; if (!v) return;
+  const a = v[i], b = v[(i + 1) % v.length];
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  const rad = deg * Math.PI / 180;
+  b.x = Math.round((a.x + len * Math.cos(rad)) * 100) / 100;
+  b.y = Math.round((a.y + len * Math.sin(rad)) * 100) / 100;
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+function setVertex(pi, i, field, val) {
+  const v = poly.plots[pi]; if (!v || !v[i]) return;
+  v[i][field] = parseFloat(val) || 0;
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+function deleteVertex(pi, i) { polySnapshot();
+  const v = poly.plots[pi]; if (!v || v.length <= 3) return;
+  v.splice(i, 1);
+  renderPlotList(); renderPlotEditor(); polyRender();
+}
+function renderPlotEditor() {
+  const el = document.getElementById('plotEditor');
+  if (poly.selPlot == null || !poly.plots[poly.selPlot]) { el.innerHTML = ''; return; }
+  const pi = poly.selPlot, v = poly.plots[pi];
+  let html = `<div style="background:#101024;border:1px solid #48cae4;border-radius:6px;padding:8px;margin:6px 0;">
+    <div style="font-size:11px;color:#48cae4;font-weight:600;margin-bottom:6px;">แก้ไขแปลง ${pi + 1} — ระยะ/มุม แต่ละด้าน</div>`;
+  for (let i = 0; i < v.length; i++) {
+    const a = v[i], b = v[(i + 1) % v.length];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const brg = edgeBearing(a, b);
+    html += `<div style="display:grid;grid-template-columns:34px 1fr 1fr;gap:4px;align-items:center;margin-bottom:3px;">
+      <span style="font-size:10px;color:#888;">ด้าน${i + 1}</span>
+      <div><input type="number" step="0.1" value="${len.toFixed(1)}" title="ระยะ (m)" onchange="setEdgeLength(${pi},${i},parseFloat(this.value))" style="padding:3px 5px;font-size:11px;"></div>
+      <div><input type="number" step="1" value="${brg.toFixed(0)}" title="มุม (°)" onchange="setEdgeBearing(${pi},${i},parseFloat(this.value))" style="padding:3px 5px;font-size:11px;"></div>
+    </div>`;
+  }
+  html += `<div style="font-size:9px;color:#666;margin:4px 0 6px;">ด้าน = ระยะ (m) · มุม (°, 0°=ขวา ทวนเข็ม) · แก้แล้วจุดปลายด้านขยับ</div>`;
+  html += `<div style="font-size:11px;color:#48cae4;font-weight:600;margin:6px 0 4px;">พิกัดจุด (m)</div>`;
+  for (let i = 0; i < v.length; i++) {
+    html += `<div style="display:grid;grid-template-columns:34px 1fr 1fr 18px;gap:4px;align-items:center;margin-bottom:3px;">
+      <span style="font-size:10px;color:#888;">จุด${i + 1}</span>
+      <input type="number" step="0.5" value="${v[i].x}" onchange="setVertex(${pi},${i},'x',this.value)" style="padding:3px 5px;font-size:11px;">
+      <input type="number" step="0.5" value="${v[i].y}" onchange="setVertex(${pi},${i},'y',this.value)" style="padding:3px 5px;font-size:11px;">
+      <button class="bld-del" onclick="deleteVertex(${pi},${i})" title="ลบจุด">✕</button>
+    </div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+  expandAll();
+}
+
+// ---- Buildings ----
+function plotsCentroid() {
+  let pts = [];
+  poly.plots.forEach(p => pts.push(...p));
+  if (!pts.length) {
+    const vm = parseFloat(document.getElementById('viewMeters').value) || 50;
+    return { x: vm * 0.4, y: vm * 0.45 };
+  }
+  return {
+    x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+    y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+  };
+}
+function addBuilding(type) { polySnapshot();
+  const d = BLD_DEFAULT[type];
+  const c = plotsCentroid();
+  // store building uses the currently-selected template (shape + dims)
+  let w = d.w, dep = d.d, label = d.label, tplPoly = null, tplImg = null;
+  if (type === 'store') {
+    const t = getTpl(selectedTplId);
+    w = t.w; dep = t.d; label = t.name; tplPoly = t.poly.map(p => ({ x:p.x, y:p.y })); tplImg = t.img || null;
+  }
+  const b = {
+    id: poly.nextId++, type, color: d.color, label,
+    w, d: dep, rot: 0, poly: tplPoly, img: tplImg,
+    x: snap(c.x - w / 2), y: snap(c.y - dep / 2),
+  };
+  poly.buildings.push(b);
+  poly.selected = b.id;
+  renderBldList(); polyRender();
+}
+function addShophouse() { polySnapshot();
+  const n = parseInt(document.getElementById('shopN').value, 10);
+  if (!n || n < 1) return;
+  const d = BLD_DEFAULT.shophouse;
+  const c = plotsCentroid();
+  const baseX = snap(c.x - (n * d.w) / 2), baseY = snap(c.y - d.d / 2);
+  for (let i = 0; i < n; i++) {
+    poly.buildings.push({
+      id: poly.nextId++, type: 'shophouse', color: d.color,
+      label: `ตึกแถว #${i + 1}`, w: d.w, d: d.d, rot: 0,
+      x: baseX + i * d.w, y: baseY,
+    });
+  }
+  renderBldList(); polyRender();
+}
+function deleteBuilding(id) { polySnapshot();
+  poly.buildings = poly.buildings.filter(b => b.id !== id);
+  if (poly.selected === id) poly.selected = null;
+  renderBldList(); polyRender();
+}
+function updateBld(id, field, val) {
+  const b = poly.buildings.find(x => x.id === id);
+  if (!b) return;
+  if (field === 'label') b[field] = val;
+  else if (field === 'rot') b.rot = parseInt(val, 10) || 0;
+  else b[field] = parseFloat(val) || 0;
+  polyRender();
+}
+
+// ---- Panel rendering ----
+function renderPlotList() {
+  const el = document.getElementById('plotList');
+  let html = '';
+  poly.plots.forEach((p, i) => {
+    const sel = poly.selPlot === i ? ' style="border-color:#48cae4;box-shadow:0 0 0 1px #48cae4;"' : '';
+    html += `<div class="plot-row"${sel}>
+      <span class="pr-name" style="cursor:pointer;" onclick="selectPlot(${i})">${poly.selPlot === i ? '▼' : '▶'} แปลง ${i + 1} · ${polyArea(p).toFixed(1)} m² · ${p.length} จุด</span>
+      <button class="bld-del" onclick="deletePlot(${i})">✕</button></div>`;
+  });
+  if (poly.drawing) html += `<div class="plot-row" style="color:#2ed573;">กำลังวาด… ${poly.draft.length} จุด</div>`;
+  el.innerHTML = html || '<div style="font-size:10px;color:#555;">ยังไม่มีแปลงที่ดิน</div>';
+}
+function renderBldList() {
+  const el = document.getElementById('bldList');
+  if (!poly.buildings.length) { el.innerHTML = '<div style="font-size:10px;color:#555;">ยังไม่มีอาคาร</div>'; return; }
+  let html = '';
+  poly.buildings.forEach(b => {
+    const sel = poly.selected === b.id ? ' sel' : '';
+    const sp = `onclick="event.stopPropagation()"`;
+    html += `<div class="bld-card${sel}">
+      <div class="bld-hd" onclick="selectBld(${b.id})" style="cursor:pointer;">
+        <span class="bld-swatch" style="background:${b.color}"></span>
+        <input class="bld-name" value="${b.label}" ${sp} onchange="updateBld(${b.id},'label',this.value)">
+        <button class="bld-del" onclick="event.stopPropagation();deleteBuilding(${b.id})">🗑</button>
+      </div>
+      <div class="bld-grid">
+        <div><label>กว้าง w</label><input type="number" step="0.5" value="${b.w}" ${sp} onchange="updateBld(${b.id},'w',this.value)"></div>
+        <div><label>ลึก d</label><input type="number" step="0.5" value="${b.d}" ${sp} onchange="updateBld(${b.id},'d',this.value)"></div>
+        <div><label>x (m)</label><input type="number" step="0.5" value="${b.x}" ${sp} onchange="updateBld(${b.id},'x',this.value)"></div>
+        <div><label>y (m)</label><input type="number" step="0.5" value="${b.y}" ${sp} onchange="updateBld(${b.id},'y',this.value)"></div>
+        <div style="grid-column:1/3;"><label>หมุน</label>
+          <select ${sp} onchange="updateBld(${b.id},'rot',this.value)">
+            <option value="0"${b.rot ? '' : ' selected'}>ปกติ</option>
+            <option value="1"${b.rot ? ' selected' : ''}>90°</option>
+          </select></div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  expandAll();
+}
+function selectBld(id) { poly.selected = id; renderBldList(); polyRender(); }
+
+function expandSection(el) {
+  // After dynamic content change, update section-body maxHeight so it fits new content
+  if (!el) return;
+  const sec = el.closest('.section');
+  if (!sec) return;
+  const body = sec.querySelector('.section-body');
+  if (body && !sec.classList.contains('collapsed')) body.style.maxHeight = body.scrollHeight + 'px';
+}
+function expandAll() {
+  document.querySelectorAll('.section .section-body').forEach(body => {
+    const sec = body.closest('.section');
+    if (!sec.classList.contains('collapsed')) body.style.maxHeight = body.scrollHeight + 'px';
+  });
+}
+
+// ---- Canvas render (polygon mode) ----
+function polyRender() {
+  const canvas = document.getElementById('canvas');
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;   // logical px
+  canvas.width = Math.round(cw * dpr);
+  canvas.height = Math.round(ch * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(0, 0, cw, ch);
+
+  const v = computeView(cw, ch);
+  poly.view = v;
+  const X = x => vcx(v, x), Y = y => vcy(v, y), S = m => m * v.scale;
+
+  // Plots
+  poly.plots.forEach((p, i) => drawPlotPoly(ctx, X, Y, S, p, i + 1, i === poly.selPlot));
+
+  // ── Clip everything inside plot union ──────────────────────────────
+  if (poly.plots.length) {
+    ctx.save();
+    ctx.beginPath();
+    poly.plots.forEach(pts => {
+      pts.forEach((p, i) => { i ? ctx.lineTo(X(p.x), Y(p.y)) : ctx.moveTo(X(p.x), Y(p.y)); });
+      ctx.closePath();
+    });
+    ctx.clip();
+  }
+  // Setback zones (drawn)
+  if (poly.sbZones.length) drawSbZones(ctx, X, Y, S);
+  // Sidewalk zones (drawn)
+  if (poly.swZones.length) drawSwZones(ctx, X, Y, S);
+  // Parking zones (generated)
+  if (poly.zones.length) drawPolyZones(ctx, X, Y, S);
+  // Buildings
+  poly.buildings.forEach(b => drawBld(ctx, X, Y, S, b));
+  // (Setback lines drawn inside drawPolyZones, after each zone)
+  if (poly.plots.length) ctx.restore(); // end plot clip
+  // Draft drawn OUTSIDE clip so it's always visible (even outside existing plots)
+  if (poly.draft.length) drawDraft(ctx, X, Y, v);
+  // ──────────────────────────────────────────────────────────────────
+  // Road strip per store (bottom edge / roadSide)
+  drawPolyRoads(ctx, X, Y, S, v, cw, ch);
+  // Crosshair guide while drawing
+  if (poly.drawing && poly.mouse) drawCrosshair(ctx, X, Y, v, cw, ch);
+  // North arrow
+  drawNorthArrow(ctx, cw - 30, 20, 20);
+  // Scale bar
+  drawScaleBar(ctx, 14, ch - 16, v.scale);
+
+  updatePolyStats();
+}
+
+function drawCrosshair(ctx, X, Y, v, cw, ch) {
+  const { sx, sy } = poly.mouse;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(46,213,115,0.7)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(sx, 0); ctx.lineTo(sx, ch);
+  ctx.moveTo(0, sy); ctx.lineTo(cw, sy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // world coord + distance from last vertex
+  const w = worldFromScreen(v, sx, sy);
+  let txt = `(${w.x.toFixed(1)}, ${w.y.toFixed(1)})`;
+  if (poly.draft.length) {
+    const last = poly.draft[poly.draft.length - 1];
+    const d = Math.hypot(w.x - last.x, w.y - last.y);
+    txt += `  •  ${d.toFixed(1)} m`;
+  }
+  ctx.font = 'bold 11px Segoe UI';
+  const tw = ctx.measureText(txt).width + 8;
+  const lx = Math.min(sx + 10, cw - tw - 2), ly = Math.max(sy - 22, 2);
+  ctx.fillStyle = 'rgba(20,40,25,0.85)';
+  ctx.fillRect(lx, ly, tw, 16);
+  ctx.fillStyle = '#9be7b4';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, lx + 4, ly + 8);
+  ctx.restore();
+}
+
+function drawPlotPoly(ctx, X, Y, S, pts, num, isSel) {
+  ctx.beginPath();
+  pts.forEach((p, i) => { const sx = X(p.x), sy = Y(p.y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+  ctx.closePath();
+  ctx.fillStyle = isSel ? 'rgba(72,202,228,0.10)' : 'rgba(232,232,222,0.85)';
+  ctx.fill();
+  ctx.strokeStyle = isSel ? '#48cae4' : '#FFD700';
+  ctx.lineWidth = isSel ? 4 : 3;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // Edge length labels
+  ctx.fillStyle = '#c1121f';
+  ctx.font = 'bold 11px Segoe UI';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 0.1) continue;  // skip zero-length edges
+    const mx = X((a.x + b.x) / 2), my = Y((a.y + b.y) / 2);
+    const lbl = `${len.toFixed(1)} m`;
+    const tw = ctx.measureText(lbl).width + 6;
+    ctx.fillStyle = 'rgba(245,245,240,0.9)';
+    ctx.fillRect(mx - tw / 2, my - 7, tw, 14);
+    ctx.fillStyle = '#c1121f';
+    ctx.fillText(lbl, mx, my);
+  }
+  // Vertices — bigger + draggable handle when plot is selected
+  pts.forEach((p, vi) => {
+    const r = isSel ? 6 : 3.5;
+    const isDragV = poly.dragV && poly.dragV.pi === num-1 && poly.dragV.vi === vi;
+    const isHovV  = poly.hovV  && poly.hovV.pi  === num-1 && poly.hovV.vi  === vi;
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, 7);
+    ctx.fillStyle = isDragV ? '#ffd700' : isHovV ? '#fff' : (isSel ? '#48cae4' : '#c1121f');
+    ctx.fill();
+    if (isSel) { ctx.strokeStyle='#004a6e'; ctx.lineWidth=1.5; ctx.stroke(); }
+  });
+  // Dimension lines (architectural style) — only when selected
+  if (isSel) {
+    const OFF = 18; // px offset from edge
+    ctx.save();
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len < 0.1) continue;
+      const sax = X(a.x), say = Y(a.y), sbx = X(b.x), sby = Y(b.y);
+      // perpendicular outward normal
+      const ex = sbx - sax, ey = sby - say, el = Math.hypot(ex, ey);
+      const nx = -ey / el, ny = ex / el; // 90° CCW of edge direction (points outward)
+      // offset endpoints
+      const ax2 = sax + nx * OFF, ay2 = say + ny * OFF;
+      const bx2 = sbx + nx * OFF, by2 = sby + ny * OFF;
+      // dim line
+      ctx.strokeStyle = '#1a6fa8'; ctx.lineWidth = 1.2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(ax2, ay2); ctx.lineTo(bx2, by2); ctx.stroke();
+      // tick marks at ends
+      ctx.beginPath();
+      ctx.moveTo(sax + nx*(OFF-5), say + ny*(OFF-5)); ctx.lineTo(sax + nx*(OFF+5), say + ny*(OFF+5));
+      ctx.moveTo(sbx + nx*(OFF-5), sby + ny*(OFF-5)); ctx.lineTo(sbx + nx*(OFF+5), sby + ny*(OFF+5));
+      ctx.stroke();
+      // label background + text
+      const mx = (ax2 + bx2) / 2, my = (ay2 + by2) / 2;
+      const angle = Math.atan2(ey, ex);
+      ctx.font = 'bold 11px Segoe UI';
+      const lbl = `${len.toFixed(1)} m`;
+      const tw = ctx.measureText(lbl).width + 6;
+      ctx.save();
+      ctx.translate(mx, my); ctx.rotate(angle);
+      ctx.fillStyle = 'rgba(20,60,100,0.85)';
+      ctx.fillRect(-tw/2, -9, tw, 13);
+      ctx.fillStyle = '#90d4f7';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, 0, -2);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Plot number badge
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  ctx.fillStyle = 'rgba(180,140,0,0.5)';
+  ctx.font = 'bold 13px Segoe UI';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`แปลง ${num}`, X(cx), Y(cy) - 4);
+}
+
+function drawDraft(ctx, X, Y, v) {
+  const pts = poly.draft;
+  ctx.strokeStyle = '#2ed573';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  pts.forEach((p, i) => { const sx = X(p.x), sy = Y(p.y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  pts.forEach((p, i) => {
+    const r = i === 0 ? 6 : 5;
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, 7);
+    ctx.fillStyle = i === 0 ? '#e63946' : '#2ed573'; ctx.fill();
+    // delete hint on non-first vertices
+    if (i > 0 && poly.mouse) {
+      const hov = Math.hypot(X(p.x) - poly.mouse.sx, Y(p.y) - poly.mouse.sy) < 12;
+      if (hov) {
+        ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r + 3, 0, 7);
+        ctx.strokeStyle = '#e63946'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = 'rgba(230,57,70,0.9)'; ctx.font = 'bold 10px Segoe UI';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('✕', X(p.x), Y(p.y) - r - 2);
+      }
+    }
+  });
+  // edge lengths while drawing
+  ctx.fillStyle = '#1a7a3e'; ctx.font = 'bold 10px Segoe UI';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    ctx.fillText(`${len.toFixed(1)}`, X((a.x + b.x) / 2), Y((a.y + b.y) / 2) - 8);
+  }
+}
+
+// Footprint polygon in world coords (rotation applied), or null for plain rect
+function bldPolyWorld(b) {
+  if (!b.poly || b.poly.length < 3) return null;
+  return b.poly.map(p => {
+    let lx = p.x, ly = p.y;
+    if (b.rot) { lx = p.y; ly = b.w - p.x; }  // 90° into bbox d×w
+    return { x: b.x + lx, y: b.y + ly };
+  });
+}
+function drawBld(ctx, X, Y, S, b) {
+  const r = bldRect(b);
+  const fits = bldFits(b);
+  const sel = poly.selected === b.id;
+  const px = X(r.x), py = Y(r.y + r.h), pw = S(r.w), ph = S(r.h);  // bbox top-left in screen
+  const wp = bldPolyWorld(b);
+
+  const imgEl = b.img ? getImg(b.img, polyRender) : null;
+  ctx.fillStyle = fits ? b.color : hexA(b.color, 0.4);
+  ctx.strokeStyle = sel ? '#48cae4' : (fits ? '#00000055' : '#e63946');
+  ctx.lineWidth = sel ? 3 : 1.5;
+  ctx.setLineDash([]);
+  // build footprint path (polygon or bbox)
+  const tracePath = () => {
+    if (wp) { ctx.beginPath(); wp.forEach((p,i)=>{ const sx=X(p.x),sy=Y(p.y); i?ctx.lineTo(sx,sy):ctx.moveTo(sx,sy); }); ctx.closePath(); }
+    else { ctx.beginPath(); ctx.rect(px, py, pw, ph); }
+  };
+  if (imgEl) {
+    ctx.save(); tracePath(); ctx.clip();
+    ctx.globalAlpha = fits ? 1 : 0.45;
+    ctx.drawImage(imgEl, px, py, pw, ph);   // px,py = bbox top-left; pw×ph = bbox size
+    ctx.globalAlpha = 1; ctx.restore();
+    tracePath(); ctx.stroke();
+  } else {
+    tracePath(); ctx.fill(); ctx.stroke();
+  }
+
+  // label (at bbox center) — skip when plan image shown
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const fs = Math.max(9, Math.min(15, S(1.2)));
+  ctx.font = `bold ${fs}px Segoe UI`;
+  if (!imgEl && pw > 26 && ph > 18) {
+    ctx.fillText(b.label, px + pw / 2, py + ph / 2 - fs * 0.55);
+    ctx.font = `${Math.max(8, fs * 0.75)}px Segoe UI`;
+    ctx.fillText(`${b.w}×${b.d} m`, px + pw / 2, py + ph / 2 + fs * 0.55);
+  }
+  if (!fits) {
+    ctx.fillStyle = 'rgba(230,30,30,0.95)';
+    ctx.font = `bold ${Math.max(9, fs * 0.8)}px Segoe UI`;
+    ctx.fillText('⚠ ล้ำขอบที่ดิน', px + pw / 2, py + ph + 9);
+  }
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+function updatePolyStats() {
+  const totalArea = poly.plots.reduce((s, p) => s + polyArea(p), 0);
+  const storeArea = poly.buildings.filter(b => b.type === 'store').reduce((s, b) => s + b.w * b.d, 0);
+  const overflow = poly.buildings.some(b => !bldFits(b));
+  document.getElementById('sv-plot').textContent = totalArea ? totalArea.toFixed(0) : '—';
+  document.getElementById('sv-store').textContent = storeArea ? storeArea.toFixed(0) : '—';
+  document.getElementById('sv-park').textContent = poly.buildings.length;
+  document.getElementById('sv-cars').textContent = poly.plots.length;
+  document.getElementById('sv-ratio').textContent = totalArea ? ((storeArea / totalArea) * 100).toFixed(1) + '%' : '—';
+  // relabel stats for poly context
+  const lbls = document.querySelectorAll('.stat-lbl');
+  if (lbls[2]) lbls[2].textContent = 'จำนวนอาคาร';
+  if (lbls[3]) lbls[3].textContent = 'จำนวนแปลง';
+  const st = document.getElementById('sv-status');
+  if (!poly.plots.length) { st.textContent = 'วาดที่ดินก่อน'; st.className = 'status-badge badge-err'; }
+  else if (overflow) { st.textContent = '⚠ อาคารล้ำขอบ'; st.className = 'status-badge badge-err'; }
+  else { st.textContent = '✅ อยู่ในเขต'; st.className = 'status-badge badge-ok'; }
+}
+
+// ---- Canvas interaction (polygon mode) ----
+function canvasToScreen(e) {
+  const canvas = document.getElementById('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  // canvas backing store is cw*dpr; render transform is in logical px → map clicks to logical
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / dpr / rect.width),
+    y: (e.clientY - rect.top) * (canvas.height / dpr / rect.height),
+  };
+}
+(function attachPolyEvents() {
+  const canvas = document.getElementById('canvas');
+  canvas.addEventListener('mousedown', e => {
+    if (appMode !== 'poly' || !poly.view) return;
+    const s = canvasToScreen(e);
+    const w = worldFromScreen(poly.view, s.x, s.y);
+    if (poly.drawing) {
+      // Right-click during drawing = remove last vertex (handled by contextmenu below)
+      if (e.button === 2) return;
+      // Click near first vertex (≥3 pts) → auto-close
+      if (poly.draft.length >= 3) {
+        const f = poly.draft[0];
+        if (Math.hypot(vcx(poly.view, f.x) - s.x, vcy(poly.view, f.y) - s.y) < 12) {
+          closeDraftPlot(); return;
+        }
+      }
+      // Click near an existing draft vertex (not first) → delete that vertex
+      for (let di = poly.draft.length - 1; di >= 1; di--) {
+        const dp = poly.draft[di];
+        if (Math.hypot(vcx(poly.view, dp.x) - s.x, vcy(poly.view, dp.y) - s.y) < 10) {
+          poly.draft.splice(di, 1);
+          renderPlotList(); polyRender(); return;
+        }
+      }
+      // Normal: add new vertex
+      poly.draft.push({ x: snap(w.x), y: snap(w.y) });
+      renderPlotList(); polyRender();
+      return;
+    }
+    // hit-test parking zones for drag
+    for (let zi = poly.zones.length - 1; zi >= 0; zi--) {
+      const z = poly.zones[zi];
+      const ox = z.offX||0, oy = z.offY||0;
+      const horiz = (z.roadSide==='west'||z.roadSide==='east');
+      if (!horiz) {
+        // Hit = parking block area (road → wheelStop top); full frontage; walkway excluded
+        const [ylo, yhi] = zoneMinMax(z.z_road, z.z_wsEnd + oy);
+        const wxl = z.parkX, wxr = z.parkX + (z.availW || z.parkW);
+        if (w.x >= wxl && w.x <= wxr && w.y >= ylo && w.y <= yhi) {
+          poly.dragZone = { zi, offx: w.x - ox, offy: w.y - oy };
+          polyRender(); return;
+        }
+      }
+    }
+    // hit-test plot vertices first (when a plot is selected)
+    if (poly.selPlot != null) {
+      const verts = poly.plots[poly.selPlot];
+      if (verts) {
+        for (let vi = 0; vi < verts.length; vi++) {
+          const vp = verts[vi];
+          const dist = Math.hypot(vcx(poly.view, vp.x) - s.x, vcy(poly.view, vp.y) - s.y);
+          if (dist < 10) {
+            poly.dragV = { pi: poly.selPlot, vi };
+            polyRender();
+            return;
+          }
+        }
+      }
+    }
+    // hit-test buildings (topmost last)
+    for (let i = poly.buildings.length - 1; i >= 0; i--) {
+      const b = poly.buildings[i];
+      if (bldHit(b, w.x, w.y)) {
+        poly.selected = b.id;
+        poly.drag = { id: b.id, offx: w.x - b.x, offy: w.y - b.y, moved: false };
+        renderBldList(); polyRender();
+        return;
+      }
+    }
+    poly.selected = null; renderBldList(); polyRender();
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (appMode !== 'poly' || !poly.view) return;
+    const s = canvasToScreen(e);
+    // Middle-mouse pan
+    if (poly._panStart) {
+      const { sx, sy, originX, originY, scale } = poly._panStart;
+      const dx = (s.x - sx) / scale;  // world units
+      const dy = (s.y - sy) / scale;  // y flip: drag down = view moves down = originY decreases
+      poly.manualView = { scale, originX: originX - dx, originY: originY + dy };
+      polyRender(); return;
+    }
+    // Drawing: track mouse for crosshair guide
+    if (poly.drawing) {
+      poly.mouse = { sx: s.x, sy: s.y };
+      polyRender();
+      return;
+    }
+    // Dragging a parking zone
+    if (poly.dragZone) {
+      const wz = worldFromScreen(poly.view, s.x, s.y);
+      const z = poly.zones[poly.dragZone.zi];
+      if (z) {
+        z.offX = snap(wz.x - poly.dragZone.offx);
+        z.offY = snap(wz.y - poly.dragZone.offy);
+        // Clamp horizontal so slot block never exceeds store frontage extent
+        const slack = Math.max(0, (z.availW || z.parkW) - z.parkW);
+        z.offX = Math.min(slack, Math.max(0, z.offX));
+      }
+      polyRender(); return;
+    }
+    // Dragging a plot vertex
+    if (poly.dragV) {
+      if (!poly.dragV._started) { polySnapshot(); poly.dragV._started = true; }
+      const wv = worldFromScreen(poly.view, s.x, s.y);
+      const verts = poly.plots[poly.dragV.pi];
+      if (verts) {
+        verts[poly.dragV.vi].x = snap(wv.x);
+        verts[poly.dragV.vi].y = snap(wv.y);
+        renderPlotEditor();
+      }
+      polyRender();
+      return;
+    }
+    // Dragging a building
+    if (poly.drag) {
+      const w = worldFromScreen(poly.view, s.x, s.y);
+      const b = poly.buildings.find(x => x.id === poly.drag.id);
+      if (!b) return;
+      b.x = snap(w.x - poly.drag.offx);
+      b.y = snap(w.y - poly.drag.offy);
+      poly.drag.moved = true;
+      polyRender();
+      return;
+    }
+    // Idle: cursor feedback — vertex hover or building hover
+    const w = worldFromScreen(poly.view, s.x, s.y);
+    let newHovV = null;
+    if (poly.selPlot != null) {
+      const verts = poly.plots[poly.selPlot];
+      if (verts) {
+        for (let vi = 0; vi < verts.length; vi++) {
+          const vp = verts[vi];
+          if (Math.hypot(vcx(poly.view, vp.x) - s.x, vcy(poly.view, vp.y) - s.y) < 10) {
+            newHovV = { pi: poly.selPlot, vi }; break;
+          }
+        }
+      }
+    }
+    const hovChanged = JSON.stringify(newHovV) !== JSON.stringify(poly.hovV);
+    poly.hovV = newHovV;
+    if (hovChanged) polyRender();
+    const overBld = poly.buildings.some(b => bldHit(b, w.x, w.y));
+    const overZone = poly.zones.some(z => {
+      if (z.roadSide==='west'||z.roadSide==='east') return false;
+      const ox=z.offX||0, oy=z.offY||0;
+      const [ylo,yhi] = zoneMinMax(z.z_road, z.z_wsEnd+oy);
+      return w.x>=z.parkX && w.x<=z.parkX+(z.availW||z.parkW) && w.y>=ylo && w.y<=yhi;
+    });
+    canvas.style.cursor = newHovV ? 'crosshair' : (overZone||overBld ? 'move' : 'default');
+  });
+  canvas.addEventListener('mouseleave', () => {
+    if (poly.mouse) { poly.mouse = null; if (poly.drawing) polyRender(); }
+    poly._panStart = null;
+  });
+  window.addEventListener('mouseup', e => {
+    if (poly.dragZone) { poly.dragZone = null; }
+    if (poly.dragV) { poly.dragV = null; renderPlotList(); renderPlotEditor(); }
+    if (poly.drag)  { poly.drag  = null; renderBldList(); }
+    if (e.button === 1) { poly._panStart = null; canvas.style.cursor = 'default'; }
+  });
+
+  // ---- Middle-click pan ----
+  canvas.addEventListener('mousedown', e => {
+    if (appMode !== 'poly' || e.button !== 1) return;
+    e.preventDefault();
+    const s = canvasToScreen(e);
+    const v = poly.view || computeView(canvas.width, canvas.height);
+    // Snapshot current origin (world coord at canvas center)
+    const cw = canvas.width, ch = canvas.height;
+    const originX = poly.manualView?.originX ?? worldFromScreen(v, cw/2, ch/2).x;
+    const originY = poly.manualView?.originY ?? worldFromScreen(v, cw/2, ch/2).y;
+    const scale   = poly.manualView?.scale   ?? v.scale;
+    poly._panStart = { sx: s.x, sy: s.y, originX, originY, scale };
+    canvas.style.cursor = 'grabbing';
+  }, true);
+
+  // ---- Right-click during drawing = remove last vertex ----
+  canvas.addEventListener('contextmenu', e => {
+    if (appMode !== 'poly') return;
+    e.preventDefault();
+    if (poly.drawing && poly.draft.length > 0) {
+      poly.draft.pop();
+      renderPlotList(); polyRender();
+    }
+  });
+
+  // ---- Scroll zoom ----
+  canvas.addEventListener('wheel', e => {
+    if (appMode !== 'poly') return;
+    e.preventDefault();
+    const s = canvasToScreen(e);
+    const v = poly.view || computeView(canvas.width, canvas.height);
+    const wx = worldFromScreen(v, s.x, s.y);  // world point under mouse
+    const factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+    const curScale = v.scale;
+    const newScale = Math.max(2, Math.min(curScale * factor, 800));
+    // Keep wx under mouse: originX = wx.x - (s.x - cw/2)/newScale
+    const cw = canvas.width, ch = canvas.height;
+    const newOriginX = wx.x - (s.x - cw / 2) / newScale;
+    const newOriginY = wx.y - (ch / 2 - s.y) / newScale;  // y flip
+    poly.manualView = { scale: newScale, originX: newOriginX, originY: newOriginY };
+    polyRender();
+  }, { passive: false });
+
+  // Double-click canvas → reset zoom to auto-fit
+  canvas.addEventListener('dblclick', e => {
+    if (appMode !== 'poly' || poly.drawing) return;
+    poly.manualView = null;
+    polyRender();
+  });
+
+  // ---- Keyboard: Ctrl+Z undo, Escape exit draw ----
+  window.addEventListener('keydown', e => {
+    if (appMode !== 'poly') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      polyUndo();
+    }
+    if (e.key === 'Escape' && poly.drawing) {
+      poly.draft = []; poly.drawing = false; poly.mouse = null;
+      document.getElementById('drawBtn').classList.remove('live');
+      document.getElementById('drawBtn').textContent = '✏️ วาดที่ดิน (คลิกลงจุด)';
+      updateCanvasCursor(); renderPlotList(); polyRender();
+    }
+  });
+})();
+
+// ---- Undo ----
+// ---- Setback list ----
+const SB_SIDES = {back:'หลัง', left:'ซ้าย', right:'ขวา', front:'หน้า'};
+
+// ---- Setback list ----
+function addSetback() {
+  poly.setbacks.push({ id: poly.sbNextId++, side: 'left', dist: 3 });
+  renderSetbackList();
+}
+function removeSetback(id) {
+  poly.setbacks = poly.setbacks.filter(s => s.id !== id);
+  renderSetbackList();
+}
+function updateSetback(id, field, val) {
+  const s = poly.setbacks.find(x => x.id === id);
+  if (!s) return;
+  s[field] = field === 'dist' ? (parseFloat(val) || 0) : val;
+}
+function renderSetbackList() {
+  const el = document.getElementById('sbList');
+  if (!el) return;
+  if (!poly.setbacks.length) { el.innerHTML = '<div style="font-size:10px;color:#555;padding:4px 0;">ยังไม่มีระยะร่น</div>'; return; }
+  el.innerHTML = poly.setbacks.map(s => `
+    <div style="display:grid;grid-template-columns:1fr 70px 28px;gap:4px;align-items:center;margin-bottom:4px;">
+      <select onchange="updateSetback(${s.id},'side',this.value)" style="padding:4px 6px;font-size:11px;">
+        ${Object.entries(SB_SIDES).map(([v,lbl]) => `<option value="${v}"${s.side===v?' selected':''}>${lbl}</option>`).join('')}
+      </select>
+      <input type="number" value="${s.dist}" min="0" step="0.5" onchange="updateSetback(${s.id},'dist',this.value)" style="padding:4px 6px;font-size:11px;">
+      <button onclick="removeSetback(${s.id})" style="background:#2a1010;border:1px solid #c0392b;color:#e74c3c;border-radius:4px;cursor:pointer;font-size:13px;line-height:1;padding:3px 5px;">−</button>
+    </div>`).join('');
+  expandAll();
+}
+
+// ---- Parking zone list ----
+const ROAD_SIDES = {south:'ใต้ (ล่าง)',north:'เหนือ (บน)',west:'ตะวันตก',east:'ตะวันออก'};
+function addParkZone() {
+  poly.parkZones.push({ id: poly.pzNextId++, carW:2.5, carD:5, rearClear:10, storeClear:2, wheelStop:1, roadSide:'south', sidewalk:0 });
+  renderParkZoneList();
+}
+function removeParkZone(id) {
+  poly.parkZones = poly.parkZones.filter(z => z.id !== id);
+  renderParkZoneList();
+}
+function updateParkZone(id, field, val) {
+  const z = poly.parkZones.find(x => x.id === id);
+  if (!z) return;
+  z[field] = field === 'roadSide' ? val : (parseFloat(val) || 0);
+}
+function renderParkZoneList() {
+  const el = document.getElementById('parkZoneList');
+  if (!el) return;
+  if (!poly.parkZones.length) { el.innerHTML = '<div style="font-size:10px;color:#555;padding:4px 0;">ยังไม่มี zone จอดรถ</div>'; return; }
+  el.innerHTML = poly.parkZones.map((z,idx) => `
+    <div style="background:#0d0d1f;border:1px solid #2a2a4a;border-radius:6px;padding:7px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <span style="font-size:11px;font-weight:600;color:#48cae4;">Zone ${idx+1}</span>
+        <button onclick="removeParkZone(${z.id})" style="background:#2a1010;border:1px solid #c0392b;color:#e74c3c;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 8px;">− ลบ</button>
+      </div>
+      <div class="grid2" style="gap:4px;">
+        <div><label style="font-size:9px;">ช่องกว้าง (m)</label>
+          <input type="number" value="${z.carW}" min="2" step="0.1" onchange="updateParkZone(${z.id},'carW',this.value)" style="padding:3px 5px;font-size:11px;"></div>
+        <div><label style="font-size:9px;">ช่องลึก (m)</label>
+          <input type="number" value="${z.carD}" min="3" step="0.5" onchange="updateParkZone(${z.id},'carD',this.value)" style="padding:3px 5px;font-size:11px;"></div>
+        <div><label style="font-size:9px;">ระยะถอย (m)</label>
+          <input type="number" value="${z.rearClear}" min="0" step="0.5" onchange="updateParkZone(${z.id},'rearClear',this.value)" style="padding:3px 5px;font-size:11px;"></div>
+        <div><label style="font-size:9px;">ทางเดิน (m)</label>
+          <input type="number" value="${z.storeClear}" min="0" step="0.5" onchange="updateParkZone(${z.id},'storeClear',this.value)" style="padding:3px 5px;font-size:11px;"></div>
+        <div><label style="font-size:9px;">หมอนจอด (m)</label>
+          <input type="number" value="${z.wheelStop||0}" min="0" step="0.25" onchange="updateParkZone(${z.id},'wheelStop',this.value)" style="padding:3px 5px;font-size:11px;" title="กันชนหน้าช่องจอด (wheel stop)"></div>
+        <div><label style="font-size:9px;">ฟุตบาท (m)</label>
+          <input type="number" value="${z.sidewalk||0}" min="0" step="0.25" onchange="updateParkZone(${z.id},'sidewalk',this.value)" style="padding:3px 5px;font-size:11px;" title="ขอบฟุตบาทภายในทางเดิน (≤ทางเดิน)"></div>
+      </div>
+      <label style="font-size:9px;margin-top:4px;">ทิศถนน</label>
+      <select onchange="updateParkZone(${z.id},'roadSide',this.value)" style="padding:3px 5px;font-size:11px;">
+        ${Object.entries(ROAD_SIDES).map(([v,lbl])=>`<option value="${v}"${z.roadSide===v?' selected':''}>${lbl}</option>`).join('')}
+      </select>
+    </div>`).join('');
+  expandAll();
+}
+
+// ---- Sidewalk zone list ----
+function addSidewalkZone() {
+  poly.sidewalks.push({id: poly.swNextId++, side:'left', dist:1.5});
+  renderSidewalkList();
+}
+function removeSidewalkZone(id) {
+  poly.sidewalks = poly.sidewalks.filter(s => s.id !== id);
+  renderSidewalkList();
+}
+function updateSidewalkZone(id, field, val) {
+  const s = poly.sidewalks.find(x => x.id === id);
+  if (!s) return;
+  s[field] = field === 'dist' ? (parseFloat(val) || 0) : val;
+}
+function renderSidewalkList() {
+  const el = document.getElementById('sidewalkList');
+  if (!el) return;
+  if (!poly.sidewalks.length) { el.innerHTML = '<div style="font-size:10px;color:#555;padding:4px 0;">ยังไม่มีฟุตบาท</div>'; expandAll(); return; }
+  el.innerHTML = poly.sidewalks.map(s => `
+    <div style="display:grid;grid-template-columns:1fr 70px 28px;gap:4px;align-items:center;margin-bottom:4px;">
+      <select onchange="updateSidewalkZone(${s.id},'side',this.value)" style="padding:4px 6px;font-size:11px;">
+        <option value="left"${s.side==='left'?' selected':''}>ซ้าย</option>
+        <option value="right"${s.side==='right'?' selected':''}>ขวา</option>
+        <option value="back"${s.side==='back'?' selected':''}>หลัง</option>
+      </select>
+      <input type="number" value="${s.dist}" min="0" step="0.25" onchange="updateSidewalkZone(${s.id},'dist',this.value)" style="padding:4px 6px;font-size:11px;">
+      <button onclick="removeSidewalkZone(${s.id})" style="background:#2a1010;border:1px solid #c0392b;color:#e74c3c;border-radius:4px;cursor:pointer;font-size:13px;line-height:1;padding:3px 5px;">−</button>
+    </div>`).join('');
+  expandAll();
+}
+
+function drawSidewalkZones() { polySnapshot();
+  poly.swZones = [];
+  const stores = poly.buildings.filter(b => b.type === 'store');
+  if (!stores.length) { alert('ยังไม่มีร้าน 7-Eleven'); return; }
+  stores.forEach(b => {
+    poly.sidewalks.forEach(sw => {
+      poly.swZones.push({storeId: b.id, side: sw.side, dist: sw.dist});
+    });
+  });
+  polyRender();
+}
+
+// ---- Draw sidewalk zones ----
+function drawSwZones(ctx, X, Y, S) {
+  poly.swZones.forEach(z => {
+    const store = poly.buildings.find(b => b.id === z.storeId);
+    if (!store || z.dist <= 0) return;
+    const r = bldRect(store);
+    let wx, wy, ww, wh;
+    if      (z.side === 'left')  { wx = r.x - z.dist;    wy = r.y; ww = z.dist; wh = r.h; }
+    else if (z.side === 'right') { wx = r.x + r.w;       wy = r.y; ww = z.dist; wh = r.h; }
+    else if (z.side === 'back')  { wx = r.x; wy = r.y + r.h; ww = r.w; wh = z.dist; }
+    else return;
+
+    const px=X(wx), py=Y(wy+wh), pw=S(ww), ph=S(wh);
+    if (pw < 1 || ph < 1) return;
+    // Fill — concrete color
+    ctx.fillStyle = 'rgba(160,160,140,0.4)'; ctx.fillRect(px,py,pw,ph);
+    // Hatch diagonal
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px,py,pw,ph); ctx.clip();
+    ctx.strokeStyle='rgba(100,100,80,0.35)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    for(let i=-ph;i<pw+ph;i+=10){ctx.beginPath();ctx.moveTo(px+i,py);ctx.lineTo(px+i+ph,py+ph);ctx.stroke();}
+    ctx.setLineDash([]); ctx.restore();
+    // Border
+    ctx.strokeStyle='rgba(100,100,80,0.7)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
+    // Label
+    if (Math.min(pw,ph) > 14) {
+      ctx.fillStyle='rgba(60,60,40,0.9)'; ctx.font=`bold ${Math.max(9,S(0.55))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`ฟุตบาท ${z.dist} m`, px+pw/2, py+ph/2);
+    }
+  });
+}
+
+function polySnapshot() {
+  poly.history.push(JSON.stringify({ plots: poly.plots, buildings: poly.buildings, zones: poly.zones, sbZones: poly.sbZones, swZones: poly.swZones, draft: poly.draft, parkZones: poly.parkZones }));
+  if (poly.history.length > 50) poly.history.shift();
+}
+function polyUndo() {
+  if (!poly.history.length) return;
+  const prev = JSON.parse(poly.history.pop());
+  poly.plots     = prev.plots;
+  poly.buildings = prev.buildings;
+  poly.zones     = prev.zones;
+  poly.draft     = prev.draft;
+  if (prev.sbZones)   poly.sbZones   = prev.sbZones;
+  if (prev.swZones)   poly.swZones   = prev.swZones;
+  if (prev.parkZones) poly.parkZones = prev.parkZones;
+  renderParkZoneList(); renderPlotList(); renderPlotEditor(); renderBldList(); polyRender();
+}
+
+function updateCanvasCursor() {
+  const canvas = document.getElementById('canvas');
+  canvas.style.cursor = (appMode === 'poly' && poly.drawing) ? 'crosshair' : 'default';
+}
+
+function drawPolyRoads(ctx, X, Y, S, v, cw, ch) {
+  const roadSide = document.getElementById('p_roadSide')?.value || 'south';
+  const rH = 26;
+  // Road is purely decorative — always fixed at canvas edge regardless of world coords
+  function drawRoadBar(ry) {
+    ctx.fillStyle = '#444'; ctx.fillRect(0, ry, cw, rH);
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth=2; ctx.setLineDash([18,12]);
+    ctx.beginPath(); ctx.moveTo(0, ry+rH/2); ctx.lineTo(cw, ry+rH/2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#aaa'; ctx.font='10px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('◄  ถนน  Road  ►', cw/2, ry+rH/2);
+  }
+  if (roadSide === 'south')      drawRoadBar(ch - rH);        // bottom of canvas
+  else if (roadSide === 'north') drawRoadBar(0);              // top of canvas
+  else if (roadSide === 'west')  {
+    // left side — rotate rect
+    ctx.save(); ctx.translate(rH/2, ch/2); ctx.rotate(-Math.PI/2);
+    drawRoadBar(-ch/2); ctx.restore();
+  }
+}
+
+// ============================================================
+// POLY PARKING GENERATION
+// ============================================================
+function pv(id, def) { return parseFloat(document.getElementById(id)?.value) || def; }
+
+function drawSetbackZones() { polySnapshot();
+  const sbBack  = parseFloat(document.getElementById('p_sbBack')?.value)  || 0;
+  const sbLeft  = parseFloat(document.getElementById('p_sbLeft')?.value)  || 0;
+  const sbRight = parseFloat(document.getElementById('p_sbRight')?.value) || 0;
+  poly.sbZones = [];
+  const stores = poly.buildings.filter(b => b.type === 'store');
+  if (!stores.length) { alert('ยังไม่มีร้าน 7-Eleven'); return; }
+  stores.forEach(b => {
+    // Store only storeId + side + dist — geometry recomputed live from bldRect each render
+    if (sbLeft  > 0) poly.sbZones.push({storeId:b.id, side:'left',  dist:sbLeft});
+    if (sbRight > 0) poly.sbZones.push({storeId:b.id, side:'right', dist:sbRight});
+    if (sbBack  > 0) poly.sbZones.push({storeId:b.id, side:'back',  dist:sbBack});
+  });
+  polyRender();
+}
+
+function generatePolyParking() { polySnapshot();
+  const sbBack  = parseFloat(document.getElementById('p_sbBack')?.value)  || 0;
+  const sbLeft  = parseFloat(document.getElementById('p_sbLeft')?.value)  || 0;
+  const sbRight = parseFloat(document.getElementById('p_sbRight')?.value) || 0;
+
+  if (!poly.parkZones.length) { alert('ยังไม่มี zone จอดรถ — กด + เพิ่มก่อน'); return; }
+  poly.zones = [];
+  const stores = poly.buildings.filter(b => b.type === 'store');
+  if (!stores.length) { alert('ยังไม่มีร้าน 7-Eleven'); return; }
+
+  poly.parkZones.forEach(pz => {
+    const carW = pz.carW, carD = pz.carD;
+    const rearClear = pz.rearClear, storeClear = pz.storeClear;
+    const wheelStop = pz.wheelStop || 0;
+    const aisleW = rearClear;
+    const roadSide  = pz.roadSide;
+
+  stores.forEach(b => {
+    const r = bldRect(b);
+    // Derive road boundary from actual plot extents (not hardcoded to 0)
+    const allPts  = poly.plots.flat();
+    const plotMinY = allPts.length ? Math.min(...allPts.map(p => p.y)) : 0;
+    const plotMaxY = allPts.length ? Math.max(...allPts.map(p => p.y)) : 100;
+    const plotMinX = allPts.length ? Math.min(...allPts.map(p => p.x)) : 0;
+    const plotMaxX = allPts.length ? Math.max(...allPts.map(p => p.x)) : 100;
+
+    // availW = store frontage (extent parallel to road) — parking must NOT exceed store's extent
+    let parkX0, availW, parkH_avail, roadY, dir;
+    if (roadSide === 'south') {
+      parkX0       = r.x;
+      availW       = r.w;          // store width facing road
+      roadY        = plotMinY;
+      parkH_avail  = r.y - roadY;   // store bottom face distance from south boundary
+      dir          = 1;
+    } else if (roadSide === 'north') {
+      parkX0       = r.x;
+      availW       = r.w;
+      roadY        = plotMaxY;
+      parkH_avail  = roadY - (r.y + r.h);
+      dir          = -1;
+    } else if (roadSide === 'west') {
+      parkX0       = r.y;
+      availW       = r.h;
+      roadY        = plotMinX;
+      parkH_avail  = r.x - roadY;
+      dir          = 1;
+    } else { // east
+      parkX0       = r.y;
+      availW       = r.h;
+      roadY        = plotMaxX;
+      parkH_avail  = roadY - (r.x + r.w);
+      dir          = -1;
+    }
+
+    if (availW <= 0 || parkH_avail <= 0) return;
+    const slotDepth = Math.max(0, parkH_avail - storeClear - wheelStop - rearClear);
+    const parking   = calcParkingLayout(availW, slotDepth, carW, carD, aisleW);
+    const freeSpace = Math.max(0, parkH_avail - storeClear - wheelStop - parking.usedDepth - rearClear);
+    // Actual slot-block width = cars per row × carW; leftover (availW − usedW) = slack to drag left/right
+    const carsPerRow = Math.floor(availW / carW);
+    const usedW = carsPerRow * carW;
+    const parkX = parkX0;          // block anchored to plot edge (drag via offX into slack)
+    const parkW = usedW;
+
+    // All zone boundaries = absolute world coords measured from roadY outward (in dir direction)
+    // zone_y = roadY + dir * offset  (road → freeSpace → rearClear → slots → wheelStop → storeClear → store)
+    const z_road      = roadY;
+    const z_freeEnd   = roadY + dir * freeSpace;
+    const z_rcEnd     = roadY + dir * (freeSpace + rearClear);
+    const z_fsEnd     = z_rcEnd; // alias (no separate fsEnd needed)
+    const z_slotEnd   = roadY + dir * (freeSpace + rearClear + parking.usedDepth);
+    const z_wsEnd     = roadY + dir * (freeSpace + rearClear + parking.usedDepth + wheelStop);
+    const z_scEnd     = roadY + dir * (freeSpace + rearClear + parking.usedDepth + wheelStop + storeClear);
+
+    poly.zones.push({
+      storeId: b.id, roadSide, dir,
+      parkX, parkW, parkX0, availW, parkH_avail, roadY,
+      storeX: r.x, storeW: r.w,      // store face for walkway width
+      carW, carD, aisleW, rearClear, storeClear, wheelStop, sidewalk: pz.sidewalk||0, freeSpace,
+      parking,
+      z_road, z_freeEnd, z_rcEnd, z_fsEnd, z_slotEnd, z_wsEnd, z_scEnd,
+      sbBack, sbLeft, sbRight,
+      offX: 0, offY: 0,
+    });
+  }); // end stores
+  }); // end parkZones
+  polyRender();
+}
+
+// ---- helper: min/max for zone rect regardless of dir ----
+function zoneMinMax(a, b) { return a < b ? [a, b] : [b, a]; }
+
+// ---- Draw generated parking zones (poly mode) ----
+function drawPolyZones(ctx, X, Y, S) {
+  poly.zones.forEach((z, zi) => {
+    const store = poly.buildings.find(b => b.id === z.storeId);
+    if (!store) return;
+    const r = bldRect(store);
+    const horiz = (z.roadSide === 'west' || z.roadSide === 'east');
+    const ox = z.offX || 0, oy = z.offY || 0;
+    // Offset-shifted accessors
+    const Xo = x => X(x + ox), Yo = y => Y(y + oy);
+    const fx = z.parkX, fw = z.parkW;
+
+    if (!horiz) {
+      // SLOT BLOCK (draggable via oy): road → freeSpace → rearClear → slots → wheelStop
+      // WALKWAY (ฟุตบาทหน้าร้าน): anchored to store face, independent of oy
+      const freeEnd = z.z_freeEnd + oy;
+      const rcEnd   = z.z_rcEnd   + oy;
+      const slotEnd = z.z_slotEnd + oy;
+      const wsEnd   = z.z_wsEnd   + oy;
+      const fxo = fx + ox;
+      // store face nearest road (live, follows store position)
+      const storeFace = z.dir > 0 ? r.y : r.y + r.h;
+      // Background zones (freeSpace/ระยะถอย/หมอนจอด) = FULL store frontage, fixed.
+      // Only the car-slot block (slotX..slotW) is draggable horizontally via ox.
+      const blkX  = z.parkX;                 // fixed bg left (store edge)
+      const fullW = z.availW || z.parkW;     // full store frontage width
+      const slotX = fxo;                     // slots left (draggable)
+      const slotW = fw;                      // slots width (= carsPerRow×carW)
+
+      // AMBER — ระยะถอย: freeEnd → rcEnd (full frontage, fixed)
+      if (z.rearClear > 0) {
+        const [ylo,yhi] = zoneMinMax(freeEnd, rcEnd);
+        drawZoneRect(ctx,X,Y,S,blkX,ylo,fullW,yhi-ylo,'rgba(255,180,30,0.22)',`ระยะถอย ${z.rearClear} m`,'rgba(140,80,0,0.9)',true);
+        if (z.parking.totalCars === 0 && S(z.rearClear) > 32) {
+          const need = (z.rearClear + z.storeClear + z.carD).toFixed(0);
+          ctx.fillStyle = 'rgba(200,60,0,0.92)';
+          ctx.font = `${Math.max(8,S(0.55))}px Segoe UI`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(`⚠ ต้องการ ${need}m (มี ${z.parkH_avail.toFixed(1)}m)`, X(blkX+fullW/2), Y((ylo+yhi)/2) + Math.max(12,S(0.72)));
+        }
+      }
+      // GRAY — Free space: z_road → freeEnd (full frontage, fixed)
+      if (z.freeSpace > 0.05) {
+        const [ylo,yhi] = zoneMinMax(z.z_road + oy, freeEnd);
+        drawZoneRect(ctx,X,Y,S,blkX,ylo,fullW,yhi-ylo,'rgba(180,180,180,0.18)',`Free Space ${z.freeSpace.toFixed(1)} m`,'#777');
+      }
+      // BLUE — slots bg: rcEnd → slotEnd (slot block, draggable horizontally)
+      if (z.parking.usedDepth > 0) {
+        const [ylo,yhi] = zoneMinMax(rcEnd, slotEnd);
+        drawZoneRect(ctx,X,Y,S,slotX,ylo,slotW,yhi-ylo,'rgba(72,202,228,0.14)','','',false);
+        // drag handle (car-slot block)
+        ctx.fillStyle='rgba(72,202,228,0.6)'; ctx.font='13px Segoe UI';
+        ctx.textAlign='left'; ctx.textBaseline='top';
+        ctx.fillText('⠿', X(slotX)+3, Y(yhi)+3);
+      }
+      // DARK CURB — หมอนจอด wheelStop: slotEnd → wsEnd (full frontage, fixed)
+      if (z.wheelStop > 0) {
+        const [ylo,yhi] = zoneMinMax(slotEnd, wsEnd);
+        drawZoneRect(ctx,X,Y,S,blkX,ylo,fullW,yhi-ylo,'rgba(90,90,100,0.5)',`หมอนจอด ${z.wheelStop} m`,'rgba(40,40,50,0.95)');
+      }
+      // GREEN — ทางเดิน (ฟุตบาทหน้าร้าน): anchored to store face, NOT affected by slot drag (oy)
+      if (z.storeClear > 0) {
+        const wkBot = storeFace - z.dir * z.storeClear; // band in front of store
+        const [ylo,yhi] = zoneMinMax(storeFace, wkBot);
+        const walkX = r.x, walkW = r.w;
+        drawZoneRect(ctx,X,Y,S,walkX,ylo,walkW,yhi-ylo,'rgba(100,200,120,0.22)',`ทางเดิน ${z.storeClear} m`,'rgba(30,110,50,0.9)',false,true);
+        // Sidewalk (ฟุตบาท) if set — drawn inside walkway, against store face
+        if (z.sidewalk > 0) {
+          const swH = Math.min(z.sidewalk, z.storeClear);
+          const [swLo,swHi] = zoneMinMax(storeFace, storeFace - z.dir * swH);
+          drawZoneRect(ctx,X,Y,S,walkX,swLo,walkW,swHi-swLo,'rgba(180,220,180,0.4)',`ฟุตบาท ${swH} m`,'rgba(20,100,40,0.8)');
+        }
+      }
+      // Car slots
+      z.parking.rows.forEach(row => {
+        for (let i = 0; i < row.carsPerRow; i++) {
+          const cx_ = fxo + i * z.carW;
+          const bot = rcEnd + z.dir * row.y;
+          const top = bot + z.dir * z.carD;
+          const [lo,hi] = zoneMinMax(bot, top);
+          const px=X(cx_)+1, py=Y(hi)+1, pw=S(z.carW)-2, ph=S(z.carD)-2;
+          if (pw<2||ph<2) continue;
+          ctx.fillStyle='rgba(144,224,239,0.8)'; ctx.fillRect(px,py,pw,ph);
+          ctx.strokeStyle='#0096c7'; ctx.lineWidth=0.8; ctx.strokeRect(px,py,pw,ph);
+          if (pw>20&&ph>16) {
+            ctx.fillStyle='#007ea8'; ctx.font=`${Math.min(11,S(0.6))}px Segoe UI`;
+            ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🚗',px+pw/2,py+ph/2);
+          }
+        }
+      });
+      // Aisle labels
+      z.parking.rows.forEach((row,ri) => {
+        const nextRow = z.parking.rows[ri+1]; if (!nextRow) return;
+        const ab = rcEnd + z.dir*(row.y+z.carD);
+        const at = rcEnd + z.dir*(row.y+z.carD+z.aisleW);
+        const [lo,hi] = zoneMinMax(ab, at);
+        if (S(z.aisleW)>14) {
+          const ax=X(blkX), ay_=Y(hi), aw=S(fullW), ah=S(z.aisleW);
+          ctx.fillStyle='rgba(255,180,30,0.22)'; ctx.fillRect(ax,ay_,aw,ah);
+          ctx.save(); ctx.beginPath(); ctx.rect(ax,ay_,aw,ah); ctx.clip();
+          ctx.strokeStyle='rgba(200,130,0,0.38)'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+          for (let j=-ah; j<aw+ah; j+=18) { ctx.beginPath(); ctx.moveTo(ax+j,ay_); ctx.lineTo(ax+j+ah,ay_+ah); ctx.stroke(); }
+          ctx.setLineDash([]); ctx.restore();
+          ctx.fillStyle='rgba(140,80,0,0.9)'; ctx.font=`${Math.max(8,S(0.55))}px Segoe UI`;
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(`ระยะถอย ${z.aisleW}m`, X(blkX+fullW/2), Y((lo+hi)/2));
+        }
+      });
+      if (z.parking.totalCars > 0) {
+        const midY = (rcEnd + slotEnd)/2;
+        ctx.fillStyle='rgba(0,130,180,0.9)'; ctx.font=`bold ${Math.max(10,S(0.7))}px Segoe UI`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(`Parking: ${z.parking.totalCars} คัน`, X(slotX+slotW/2), Y(midY));
+      }
+    }
+    // Setback lines use original store position (no zone offset)
+    drawPolySetback(ctx, X, Y, S, z, r);
+  });
+}
+
+function drawSbDimH(ctx, X, Y, S, x1, x2, wy, lbl) {
+  // Horizontal dimension arrow at world-y = wy, between world-x x1 and x2
+  const sx1 = X(x1), sx2 = X(x2), sy = Y(wy);
+  const ah = 4; // arrowhead half-size
+  ctx.strokeStyle = 'rgba(220,60,60,0.85)'; ctx.lineWidth = 1.2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(sx1, sy); ctx.lineTo(sx2, sy); ctx.stroke();
+  // arrowheads
+  [[sx1,1],[sx2,-1]].forEach(([sx, dir]) => {
+    ctx.beginPath(); ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + dir*ah*1.5, sy - ah*0.6);
+    ctx.lineTo(sx + dir*ah*1.5, sy + ah*0.6);
+    ctx.closePath(); ctx.fillStyle='rgba(220,60,60,0.85)'; ctx.fill();
+  });
+  // label
+  const mx = (sx1+sx2)/2, tw = ctx.measureText(lbl).width + 6;
+  ctx.fillStyle = 'rgba(60,10,10,0.8)';
+  ctx.fillRect(mx - tw/2, sy - 8, tw, 13);
+  ctx.fillStyle = '#ff9090'; ctx.font = 'bold 9px Segoe UI';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(lbl, mx, sy - 1);
+  ctx.setLineDash([6,4]); ctx.strokeStyle = 'rgba(220,60,60,0.85)';
+}
+
+function drawSbZones(ctx, X, Y, S) {
+  const COLORS = {left:'rgba(220,80,80,0.13)', right:'rgba(220,80,80,0.13)', back:'rgba(180,60,180,0.13)', front:'rgba(60,120,220,0.13)'};
+  const BORDER = {left:'rgba(220,80,80,0.6)',  right:'rgba(220,80,80,0.6)',  back:'rgba(180,60,180,0.6)',  front:'rgba(60,120,220,0.6)'};
+  const LABEL  = {left:'ระยะร่นซ้าย', right:'ระยะร่นขวา', back:'ระยะร่นหลัง', front:'ระยะร่นหน้า'};
+
+  poly.sbZones.forEach(z => {
+    // Resolve geometry live from current store position
+    const store = poly.buildings.find(b => b.id === z.storeId);
+    if (!store) return;
+    const r = bldRect(store);
+    let wx, wy, ww, wh;
+    if      (z.side === 'left')  { wx = r.x - z.dist;  wy = r.y; ww = z.dist; wh = r.h; }
+    else if (z.side === 'right') { wx = r.x + r.w;     wy = r.y; ww = z.dist; wh = r.h; }
+    else if (z.side === 'back')  { wx = r.x; wy = r.y + r.h; ww = r.w; wh = z.dist; }
+    else if (z.side === 'front') { wx = r.x; wy = r.y - z.dist; ww = r.w; wh = z.dist; }
+    else return;
+
+    const px=X(wx), py=Y(wy+wh), pw=S(ww), ph=S(wh);
+    if (pw<1||ph<1) return;
+    ctx.fillStyle = COLORS[z.side];
+    ctx.fillRect(px, py, pw, ph);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(px,py,pw,ph); ctx.clip();
+    ctx.strokeStyle=BORDER[z.side]; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+    for(let i=-ph;i<pw+ph;i+=14){ctx.beginPath();ctx.moveTo(px+i,py);ctx.lineTo(px+i+ph,py+ph);ctx.stroke();}
+    ctx.setLineDash([]); ctx.restore();
+    ctx.strokeStyle=BORDER[z.side]; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+    ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
+    if (Math.min(pw,ph)>20) {
+      ctx.fillStyle=BORDER[z.side]; ctx.font=`bold ${Math.max(9,S(0.55))}px Segoe UI`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`${LABEL[z.side]} ${z.dist} m`, px+pw/2, py+ph/2);
+    }
+  });
+}
+
+function drawAllSetbacks(ctx, X, Y, S) {
+  poly.zones.forEach(z => {
+    const store = poly.buildings.find(b => b.id === z.storeId);
+    if (!store) return;
+    drawPolySetback(ctx, X, Y, S, z, bldRect(store));
+  });
+}
+
+function drawZoneRect(ctx, X, Y, S, wx, wy, ww, wh, fill, lbl, lblColor, hatch, dashed) {
+  if (wh < 0.05 || ww < 0.05) return;
+  const px = X(wx), py = Y(wy+wh), pw = S(ww), ph = S(wh);
+  if (ph < 0.5 || pw < 0.5) return;
+  ctx.fillStyle = fill; ctx.fillRect(px, py, pw, ph);
+  if (hatch) {
+    ctx.save(); ctx.beginPath(); ctx.rect(px,py,pw,ph); ctx.clip();
+    ctx.strokeStyle='rgba(200,130,0,0.35)'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+    for (let i=-ph; i<pw+ph; i+=18) { ctx.beginPath(); ctx.moveTo(px+i,py); ctx.lineTo(px+i+ph,py+ph); ctx.stroke(); }
+    ctx.setLineDash([]); ctx.restore();
+  }
+  if (dashed) {
+    ctx.strokeStyle='rgba(60,160,80,0.4)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
+  }
+  if (lbl && ph > 12) {
+    ctx.fillStyle = lblColor||'#333'; ctx.font=`bold ${Math.max(9,S(0.65))}px Segoe UI`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(lbl, px+pw/2, py+ph/2);
+  }
+}
+
+function drawPolySetback(ctx, X, Y, S, z, r) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(220,60,60,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+
+  if (z.roadSide === 'south' || z.roadSide === 'north') {
+    const ySpan0 = Math.min(z.z_road, r.y) - 0.5;
+    const ySpan1 = r.y + r.h + 0.5;
+
+    // sbLeft: line at store LEFT face + hatch zone between store and setback boundary
+    if (z.sbLeft > 0) {
+      // Setback boundary line (sbLeft to the left of store)
+      const sbBoundX = r.x - z.sbLeft;
+      ctx.beginPath(); ctx.moveTo(X(sbBoundX), Y(ySpan0)); ctx.lineTo(X(sbBoundX), Y(ySpan1)); ctx.stroke();
+      // Store left face reference line
+      ctx.beginPath(); ctx.moveTo(X(r.x), Y(ySpan0)); ctx.lineTo(X(r.x), Y(ySpan1)); ctx.stroke();
+      // Hatch fill between boundary and store face
+      ctx.save();
+      ctx.beginPath(); ctx.rect(X(sbBoundX), Y(ySpan1), S(z.sbLeft), S(ySpan1 - ySpan0)); ctx.clip();
+      ctx.fillStyle = 'rgba(220,60,60,0.08)'; ctx.fillRect(X(sbBoundX), Y(ySpan1), S(z.sbLeft), S(ySpan1-ySpan0));
+      ctx.restore();
+      // Dimension arrow + label
+      drawSbDimH(ctx, X, Y, S, sbBoundX, r.x, r.y + r.h / 2, `${z.sbLeft} m`);
+    }
+
+    // sbRight: line at store RIGHT face + hatch to the right
+    if (z.sbRight > 0) {
+      const sbBoundX = r.x + r.w + z.sbRight;
+      ctx.beginPath(); ctx.moveTo(X(sbBoundX), Y(ySpan0)); ctx.lineTo(X(sbBoundX), Y(ySpan1)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(r.x+r.w), Y(ySpan0)); ctx.lineTo(X(r.x+r.w), Y(ySpan1)); ctx.stroke();
+      ctx.save();
+      ctx.beginPath(); ctx.rect(X(r.x+r.w), Y(ySpan1), S(z.sbRight), S(ySpan1-ySpan0)); ctx.clip();
+      ctx.fillStyle = 'rgba(220,60,60,0.08)'; ctx.fillRect(X(r.x+r.w), Y(ySpan1), S(z.sbRight), S(ySpan1-ySpan0));
+      ctx.restore();
+      drawSbDimH(ctx, X, Y, S, r.x+r.w, sbBoundX, r.y + r.h / 2, `${z.sbRight} m`);
+    }
+
+    // sbBack: horizontal line above store + hatch
+    if (z.sbBack > 0) {
+      const storeBackY = r.y + r.h;
+      const sbBoundY   = z.roadSide === 'south' ? storeBackY + z.sbBack : r.y - z.sbBack;
+      ctx.beginPath(); ctx.moveTo(X(r.x - 0.5), Y(storeBackY)); ctx.lineTo(X(r.x + r.w + 0.5), Y(storeBackY)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(r.x - 0.5), Y(sbBoundY));   ctx.lineTo(X(r.x + r.w + 0.5), Y(sbBoundY));   ctx.stroke();
+      ctx.save();
+      const [lo, hi] = [Math.min(storeBackY, sbBoundY), Math.max(storeBackY, sbBoundY)];
+      ctx.fillStyle = 'rgba(220,60,60,0.08)'; ctx.fillRect(X(r.x), Y(hi), S(r.w), S(hi-lo));
+      ctx.restore();
+      // label
+      const midY = (storeBackY + sbBoundY) / 2;
+      ctx.fillStyle = 'rgba(180,60,60,0.9)'; ctx.font = 'bold 10px Segoe UI';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${z.sbBack} m`, X(r.x + r.w / 2), Y(midY));
+    }
+  }
+  ctx.setLineDash([]); ctx.restore();
+}
+
+// ============================================================
+// RESIZE & INIT
+// ============================================================
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (appMode === 'rect') { if (lastLayout) draw(lastLayout); }
+    else polyRender();
+  }, 100);
+});
+
+window.addEventListener('load', () => {
+  // Make sections collapsible: wrap content after section-hd in section-body div
+  document.querySelectorAll('.section').forEach(sec => {
+    const hd = sec.querySelector(':scope > .section-hd');
+    if (!hd) return;
+    // Gather all sibling nodes after hd
+    const children = [];
+    let node = hd.nextSibling;
+    while (node) { children.push(node); node = node.nextSibling; }
+    if (!children.length) return;
+    const body = document.createElement('div');
+    body.className = 'section-body';
+    children.forEach(c => body.appendChild(c));
+    sec.appendChild(body);
+    // Measure natural height and store
+    const h = body.scrollHeight;
+    body.style.maxHeight = h + 'px';
+    // Toggle on header click
+    hd.addEventListener('click', e => {
+      // Don't collapse if click was on a button/input inside hd
+      if (e.target !== hd && e.target.closest('button, input, select, a')) return;
+      sec.classList.toggle('collapsed');
+      if (!sec.classList.contains('collapsed')) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+    });
+  });
+  // Migrate existing custom templates: normalize footprint flush to (0,0), w/d = drawn extent
+  (function migrateTpls() {
+    const c = loadCustomTpls(); let changed = false;
+    c.forEach(t => {
+      if (!t.poly || t.poly.length < 3) return;
+      const xs = t.poly.map(p => p.x), ys = t.poly.map(p => p.y);
+      const mnx = Math.min(...xs), mny = Math.min(...ys), mxx = Math.max(...xs), mxy = Math.max(...ys);
+      if (mnx !== 0 || mny !== 0 || Math.abs(t.w-(mxx-mnx)) > 0.01 || Math.abs(t.d-(mxy-mny)) > 0.01) {
+        t.poly = t.poly.map(p => ({ x: Math.round((p.x-mnx)*100)/100, y: Math.round((p.y-mny)*100)/100 }));
+        t.w = Math.round((mxx-mnx)*100)/100; t.d = Math.round((mxy-mny)*100)/100;
+        changed = true;
+      }
+    });
+    if (changed) saveCustomTpls(c);
+  })();
+  renderTplPicker();
+  setMode('rect');
+  // Init sidewalk list if panel exists
+  if (document.getElementById('sidewalkList')) renderSidewalkList();
+});
+
+function exportPDF() {
+  const canvas = document.getElementById('canvas');
+  const imgData = canvas.toDataURL('image/png');
+  const ts = new Date();
+  const dateStr = ts.toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
+  const timeStr = ts.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+
+  // Collect data by mode
+  let rows = [];
+  let title = '7-Eleven Store Layout';
+  let subtitle = '';
+  let statusTxt = document.getElementById('sv-status')?.textContent || '';
+
+  if (appMode === 'rect' && lastLayout) {
+    const L = lastLayout;
+    title = 'ผังร้าน 7-Eleven (โหมดสี่เหลี่ยม)';
+    subtitle = `${L.storeW} × ${L.storeD} m  — ${(L.storeW*L.storeD).toFixed(0)} m²`;
+    rows = [
+      ['ขนาดที่ดิน (กว้าง × ลึก)', `${L.plotW} × ${L.plotD} m`],
+      ['พื้นที่ที่ดิน', `${(L.plotW*L.plotD).toFixed(1)} m²`],
+      ['ขนาดร้าน (กว้าง × ลึก)', `${L.storeW} × ${L.storeD} m`],
+      ['พื้นที่ร้าน (GFA)', `${(L.storeW*L.storeD).toFixed(1)} m²`],
+      ['สัดส่วน GFA', `${((L.storeW*L.storeD)/(L.plotW*L.plotD)*100).toFixed(1)} %`],
+      ['ระยะร่นหลัง', `${L.sbBack} m`],
+      ['ระยะร่นซ้าย', `${L.sbLeft} m`],
+      ['ระยะร่นขวา', `${L.sbRight} m`],
+      ['ขนาดช่องจอด (กว้าง × ลึก)', `${L.carW} × ${L.carD} m`],
+      ['ระยะถอย (ติดถนน)', `${L.rearClear} m`],
+      ['ทางเดินหน้าร้าน', `${L.storeClear} m`],
+      ['จำนวนที่จอดรถ', `${L.parking.totalCars} คัน`],
+      ['สถานะ', statusTxt],
+    ];
+  } else {
+    title = 'ผังร้าน 7-Eleven (โหมดหลายเหลี่ยม)';
+    const totalArea = poly.plots.reduce((s,p)=>s+polyArea(p),0).toFixed(1);
+    const stores = poly.buildings.filter(b=>b.type==='store');
+    const storeArea = stores.reduce((s,b)=>s+b.w*b.d,0).toFixed(1);
+    const totalCars = poly.zones.reduce((s,z)=>s+(z.parking?.totalCars||0),0);
+    subtitle = stores.length ? `${stores[0].w} × ${stores[0].d} m  — ${storeArea} m²` : '';
+    rows = [
+      ['จำนวนแปลงที่ดิน', `${poly.plots.length} แปลง`],
+      ['พื้นที่ที่ดินรวม', `${totalArea} m²`],
+      ['จำนวนอาคาร', `${poly.buildings.length}`],
+      ['ร้าน 7-Eleven', stores.map(s=>`${s.w}×${s.d}m`).join(', ') || '—'],
+      ['พื้นที่ร้านรวม (GFA)', `${storeArea} m²`],
+      ['สัดส่วน GFA', totalArea>0 ? `${(storeArea/totalArea*100).toFixed(1)} %` : '—'],
+      ['จำนวนที่จอดรถ', `${totalCars} คัน`],
+      ['จำนวน Zone จอดรถ', `${poly.zones.length}`],
+      ['สถานะ', statusTxt],
+    ];
+  }
+
+  const rowsHTML = rows.map((r,i) => `
+    <tr style="background:${i%2===0?'#f8f9fa':'#fff'}">
+      <td style="padding:6px 12px;border:1px solid #dee2e6;font-weight:600;color:#495057;width:50%">${r[0]}</td>
+      <td style="padding:6px 12px;border:1px solid #dee2e6;color:#212529;width:50%">${r[1]}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+  @page { size: A4; margin: 18mm 14mm 18mm 14mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11pt; color: #212529; }
+  .page { max-width: 180mm; margin: 0 auto; }
+  /* Header */
+  .hdr { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 10px; border-bottom: 3px solid #1d3557; margin-bottom: 14px; }
+  .hdr-left h1 { font-size: 17pt; font-weight: 700; color: #1d3557; }
+  .hdr-left h2 { font-size: 11pt; font-weight: 400; color: #457b9d; margin-top: 3px; }
+  .hdr-right { text-align: right; font-size: 9pt; color: #6c757d; line-height: 1.6; }
+  .logo-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .logo-box { width: 36px; height: 36px; background: #1d3557; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16pt; font-weight: 900; line-height: 1; }
+  /* Canvas image */
+  .plan-img { width: 100%; border: 1px solid #dee2e6; border-radius: 4px; display: block; margin-bottom: 14px; }
+  /* Data table */
+  .section-title { font-size: 10pt; font-weight: 700; color: #1d3557; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px solid #1d3557; }
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px; }
+  /* Footer */
+  .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; font-size: 8.5pt; color: #6c757d; }
+  .stamp { display: inline-block; border: 2px solid #1d3557; border-radius: 4px; padding: 4px 14px; color: #1d3557; font-weight: 600; font-size: 10pt; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo-bar">
+        <div class="logo-box">7</div>
+        <div><h1>7-Eleven Layout Planner</h1>
+             <h2>${title}</h2></div>
+      </div>
+      ${subtitle ? `<div style="margin-top:4px;font-size:10pt;color:#495057;">ขนาดร้าน: <b>${subtitle}</b></div>` : ''}
+    </div>
+    <div class="hdr-right">
+      <div style="font-weight:700;font-size:10pt;color:#1d3557;letter-spacing:0.5px;">เอกสารวางผัง</div>
+      <div>วันที่ ${dateStr}</div>
+      <div>เวลา ${timeStr} น.</div>
+    </div>
+  </div>
+
+  <div class="section-title">ผังแปลน (Plan View)</div>
+  <img class="plan-img" src="${imgData}" alt="Layout Plan">
+
+  <div class="section-title">ตารางสรุปข้อมูล (Summary)</div>
+  <table><tbody>${rowsHTML}</tbody></table>
+
+  <div class="footer">
+    <div>จัดทำด้วยโปรแกรม 7-Eleven Layout Planner &nbsp;|&nbsp; ${dateStr}</div>
+    <div class="stamp">ร่างเบื้องต้น / Draft</div>
+  </div>
+</div>
+<script>window.onload = () => { window.print(); }<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+function saveImage() {
+  const canvas = document.getElementById('canvas');
+  const link = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  link.download = `7eleven-layout-${ts}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// Re-generate on Enter in inputs (rect mode only)
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' && appMode === 'rect') generate(); });
+});
+</script>
+</body>
+</html>
