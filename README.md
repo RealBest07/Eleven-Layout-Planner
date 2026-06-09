@@ -2,7 +2,7 @@
 
 เครื่องมือวางผังร้าน 7-Eleven และคำนวณที่จอดรถ บนเว็บ (HTML + Canvas 2D, ไฟล์เดียว ไม่มี build/backend)
 
-**Live:** https://USERNAME.github.io/REPO/ <!-- แก้ USERNAME/REPO หลัง deploy -->
+**Live:** https://RealBest07.github.io/Eleven-Layout-Planner/
 
 ## ฟีเจอร์
 - โหมดที่ดิน **สี่เหลี่ยม** (auto-layout) และ **หลายเหลี่ยม** (วาดเอง, หลายแปลง, ลากอาคาร)
